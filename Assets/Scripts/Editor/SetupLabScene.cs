@@ -5,18 +5,19 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using ImmersiveAnatomy.Learning;
 
 [InitializeOnLoad]
 public class SetupLabScene
 {
-    private const string SETUP_KEY_V3 = "ImmersiveAnatomyLab_Phase3_SetupDone_v4_auto";
+    private const string SETUP_KEY_V4 = "ImmersiveAnatomyLab_Phase4_SetupDone_v1";
 
     static SetupLabScene()
     {
         EditorApplication.delayCall += CheckAndSetup;
     }
 
-    [MenuItem("Tools/Build Phase 3 Advanced Interaction _F12")]
+    [MenuItem("Tools/Build Phase 4 Learning and Quiz System _F12")]
     public static void RunSetupManual()
     {
         BuildMainLabScene(true);
@@ -69,11 +70,11 @@ public class SetupLabScene
 
     private static void CheckAndSetup()
     {
-        if (!EditorPrefs.GetBool(SETUP_KEY_V3, false))
+        if (!EditorPrefs.GetBool(SETUP_KEY_V4, false))
         {
             BuildMainLabScene(true);
             FrameAnatomy();
-            EditorPrefs.SetBool(SETUP_KEY_V3, true);
+            EditorPrefs.SetBool(SETUP_KEY_V4, true);
         }
     }
 
@@ -438,12 +439,26 @@ public class SetupLabScene
         anatomyInteraction.xrayViewController = xrayCtrl;
         anatomyInteraction.cameraInspectionController = camInspectCtrl;
 
+        // Phase 4: Learning System, Quiz Engine & AI Tutor
+        LearningAnalytics analytics = systemsObj.AddComponent<LearningAnalytics>();
+        AIAnatomyTutor tutor = systemsObj.AddComponent<AIAnatomyTutor>();
+        QuizEngine quizEngine = systemsObj.AddComponent<QuizEngine>();
+        quizEngine.analytics = analytics;
+        quizEngine.tutor = tutor;
+        quizEngine.highlighter = highlighter;
+
+        AnatomyLearningUI learningUI = systemsObj.AddComponent<AnatomyLearningUI>();
+        learningUI.quizEngine = quizEngine;
+        learningUI.aiTutor = tutor;
+        learningUI.analytics = analytics;
+        anatomyInteraction.learningUI = learningUI;
+
         // 8. UI GameObject
         GameObject uiObj = new GameObject("UI");
 
         // Save Scene
         EditorSceneManager.SaveScene(newScene, scenePath);
-        Debug.Log($"[SetupLabScene] Phase 3 MainLab scene successfully saved to {scenePath}");
+        Debug.Log($"[SetupLabScene] Phase 4 MainLab scene successfully saved to {scenePath}");
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();

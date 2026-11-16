@@ -13,6 +13,7 @@ public class AnatomyInteraction : MonoBehaviour
     public OrganComparisonController comparisonController;
     public XRayViewController xrayViewController;
     public CameraInspectionController cameraInspectionController;
+    public ImmersiveAnatomy.Learning.AnatomyLearningUI learningUI;
 
     private OrganInteractable hoveredOrgan;
     private OrganInteractable selectedOrgan;
@@ -27,6 +28,8 @@ public class AnatomyInteraction : MonoBehaviour
         if (xrayViewController == null) xrayViewController = GetComponent<XRayViewController>();
         if (cameraInspectionController == null) cameraInspectionController = GetComponent<CameraInspectionController>();
         if (cameraInspectionController == null) cameraInspectionController = FindFirstObjectByType<CameraInspectionController>();
+        if (learningUI == null) learningUI = GetComponent<ImmersiveAnatomy.Learning.AnatomyLearningUI>();
+        if (learningUI == null) learningUI = FindFirstObjectByType<ImmersiveAnatomy.Learning.AnatomyLearningUI>();
     }
 
     private void Update()
@@ -114,11 +117,17 @@ public class AnatomyInteraction : MonoBehaviour
             selectedOrgan = hoveredOrgan;
             selectedOrgan.ShowInformation();
             if (highlighter != null) highlighter.SelectOrgan(selectedOrgan);
+            if (learningUI != null) learningUI.NotifyOrganSelected(selectedOrgan);
         }
     }
 
     private void HandleKeyboardShortcuts()
     {
+        // Learning Mode: L
+        if (Input.GetKeyDown(KeyCode.L))
+        {
+            if (learningUI != null) learningUI.ToggleLearningUI();
+        }
         // 1-6 Body System visibility
         if (BodySystemManager.Instance != null)
         {
@@ -222,10 +231,12 @@ public class AnatomyInteraction : MonoBehaviour
     {
         // 1. TOP HEADER BANNER
         GUI.Box(new Rect(15, 12, Screen.width - 30, 42), "");
-        GUI.Label(new Rect(25, 22, 540, 24), "<b>IMMERSIVE ANATOMY LAB</b>  |  Phase 3 Advanced Anatomical Interaction");
+        GUI.Label(new Rect(25, 22, 560, 24), "<b>IMMERSIVE ANATOMY LAB</b>  |  Phase 4 AI-Powered Learning & Clinical Quiz System");
 
         string modeStatus = "<color=#00E5FF>EXPLORATION</color>";
-        if (cameraInspectionController != null && cameraInspectionController.IsFocusMode)
+        if (learningUI != null && learningUI.isLearningUIOpen)
+            modeStatus = "<color=#00FF88>CLINICAL QUIZ & AI TUTOR</color>";
+        else if (cameraInspectionController != null && cameraInspectionController.IsFocusMode)
             modeStatus = "<color=#33FF88>CAMERA FOCUS & ORBIT MODE</color>";
         else if (explodedViewController != null && explodedViewController.IsExploded)
             modeStatus = "<color=#FF9900>EXPLODED ANATOMY VIEW</color>";
@@ -235,15 +246,11 @@ public class AnatomyInteraction : MonoBehaviour
             modeStatus = "<color=#CC44FF>ORGAN COMPARISON MODE</color>";
         else if (xrayViewController != null && xrayViewController.IsXRayActive)
             modeStatus = "<color=#00FFFF>X-RAY FLUOROSCOPY MODE</color>";
-        else if (comparisonController != null && comparisonController.IsInComparisonMode)
-            modeStatus = "<color=#CC44FF>ORGAN COMPARISON MODE</color>";
-        else if (xrayViewController != null && xrayViewController.IsXRayActive)
-            modeStatus = "<color=#00FFFF>X-RAY FLUOROSCOPY MODE</color>";
 
-        GUI.Label(new Rect(Screen.width - 340, 22, 320, 24), $"<b>ACTIVE MODE:</b> {modeStatus}");
+        GUI.Label(new Rect(Screen.width - 350, 22, 330, 24), $"<b>ACTIVE MODE:</b> {modeStatus}");
 
         // 2. LEFT PANEL: ANATOMICAL SYSTEMS & ADVANCED VIEW MODES
-        GUI.Box(new Rect(15, 62, 230, 395), "<b>INTERACTIVE CONTROLS</b>");
+        GUI.Box(new Rect(15, 62, 230, 435), "<b>INTERACTIVE CONTROLS</b>");
         
         // System Visibility Toggles
         if (BodySystemManager.Instance != null)
@@ -289,8 +296,16 @@ public class AnatomyInteraction : MonoBehaviour
             if (comparisonController != null) comparisonController.ToggleComparisonMode(selectedOrgan);
         }
 
+        // Learning Mode Button
+        bool isLearn = learningUI != null && learningUI.isLearningUIOpen;
+        string learnText = isLearn ? "Exit Learning [L]" : "<b>Quiz & AI Tutor [L]</b>";
+        if (GUI.Button(new Rect(25, 378, 210, 24), learnText))
+        {
+            if (learningUI != null) learningUI.ToggleLearningUI();
+        }
+
         // Reset Anatomy Button
-        if (GUI.Button(new Rect(25, 380, 210, 28), "<b>RESET ANATOMY [R]</b>"))
+        if (GUI.Button(new Rect(25, 406, 210, 24), "RESET ANATOMY [R]"))
         {
             ResetAllAnatomy();
         }
@@ -349,7 +364,7 @@ public class AnatomyInteraction : MonoBehaviour
         else
         {
             // SINGLE ORGAN CLINICAL INSPECTOR
-            GUI.Box(new Rect(rightX, 62, rightW, 435), "<b>CLINICAL ORGAN INSPECTOR</b>");
+            GUI.Box(new Rect(rightX, 62, rightW, 465), "<b>CLINICAL ORGAN INSPECTOR</b>");
 
             if (selectedOrgan != null)
             {
@@ -385,7 +400,17 @@ public class AnatomyInteraction : MonoBehaviour
                     }
                 }
 
-                if (GUI.Button(new Rect(rightX + 15, 394, rightW - 30, 24), "Deselect [R]"))
+                if (GUI.Button(new Rect(rightX + 15, 394, rightW - 30, 26), "Ask AI Tutor About Organ"))
+                {
+                    if (learningUI != null)
+                    {
+                        learningUI.isLearningUIOpen = true;
+                        learningUI.activeTab = ImmersiveAnatomy.Learning.LearningTab.AITutor;
+                        learningUI.NotifyOrganSelected(selectedOrgan);
+                    }
+                }
+
+                if (GUI.Button(new Rect(rightX + 15, 426, rightW - 30, 24), "Deselect [R]"))
                 {
                     ResetAllAnatomy();
                 }
@@ -397,12 +422,13 @@ public class AnatomyInteraction : MonoBehaviour
                 GUI.Label(new Rect(rightX + 15, 185, rightW - 30, 45), "Press <b>[X]</b> to trigger the <b>Exploded Anatomy View</b>, smoothly separating organs along physiological axes.");
                 GUI.Label(new Rect(rightX + 15, 240, rightW - 30, 45), "Press <b>[Z]</b> for <b>X-Ray Fluoroscopy</b> or <b>[C]</b> to compare two organs side-by-side.");
                 GUI.Label(new Rect(rightX + 15, 295, rightW - 30, 45), "Press <b>[F]</b> to focus camera and right-click drag to orbit/inspect closely.");
+                GUI.Label(new Rect(rightX + 15, 350, rightW - 30, 45), "Press <b>[L]</b> for the <b>Clinical Quiz, Case Simulation & AI Tutor</b>.");
             }
         }
 
         // 4. BOTTOM CONTROLS QUICK BAR
         GUI.Box(new Rect(15, Screen.height - 45, Screen.width - 30, 32), "");
-        string hint = "<b>Phase 3 Controls:</b> WASD Move | Mouse Look | Click Select | Q/E Rotate | Scroll Zoom | F Focus/Orbit | X Explode | Z X-Ray | C Compare | I Isolate | 1-6 Systems | R Reset";
+        string hint = "<b>Phase 4 Controls:</b> WASD Move | Mouse Look | Click Select | Q/E Rotate | Scroll Zoom | F Focus/Orbit | L Quiz & AI Tutor | X Explode | Z X-Ray | C Compare | I Isolate | 1-6 Systems | R Reset";
         GUI.Label(new Rect(25, Screen.height - 39, Screen.width - 50, 24), hint);
     }
 }
