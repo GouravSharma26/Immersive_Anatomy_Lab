@@ -24,6 +24,18 @@ namespace ImmersiveAnatomy.Learning
 
         private OrganInteractable lastSelectedOrgan;
         private Vector2 scrollPos;
+        private Texture2D bgTexture;
+
+        private Texture2D GetBgTexture()
+        {
+            if (bgTexture == null)
+            {
+                bgTexture = new Texture2D(1, 1);
+                bgTexture.SetPixel(0, 0, new Color(0.08f, 0.12f, 0.18f, 0.95f));
+                bgTexture.Apply();
+            }
+            return bgTexture;
+        }
 
         private void Start()
         {
@@ -68,12 +80,13 @@ namespace ImmersiveAnatomy.Learning
         {
             if (!isLearningUIOpen) return;
 
-            int modalW = 520;
-            int modalH = 500;
-            int modalX = 25;
-            int modalY = 65;
+            int modalW = 540;
+            int modalH = 490;
+            int modalX = 260; // Cleanly positioned to the right of the left interactive controls panel
+            int modalY = 62;
 
-            // Main Background Panel (Labster clinical medical card style)
+            // Main Background Panel (Labster clinical medical card style with solid backdrop)
+            GUI.DrawTexture(new Rect(modalX, modalY, modalW, modalH), GetBgTexture());
             GUI.Box(new Rect(modalX, modalY, modalW, modalH), "");
 
             // Header Ribbon

@@ -102,8 +102,12 @@ public class AnatomyInteraction : MonoBehaviour
     {
         Vector2 mousePos = Input.mousePosition;
         // Don't select if clicking on GUI bounds
-        if (mousePos.x < 240 && mousePos.y > Screen.height - 420) return;
-        if (mousePos.x > Screen.width - 380 && mousePos.y > Screen.height - 480) return;
+        if (mousePos.x < 245 && mousePos.y > Screen.height - 450) return;
+        if (mousePos.x > Screen.width - 380 && mousePos.y > Screen.height - 490) return;
+        if (learningUI != null && learningUI.isLearningUIOpen)
+        {
+            if (mousePos.x >= 255 && mousePos.x <= 810 && mousePos.y > Screen.height - 565) return;
+        }
 
         if (hoveredOrgan != null)
         {
