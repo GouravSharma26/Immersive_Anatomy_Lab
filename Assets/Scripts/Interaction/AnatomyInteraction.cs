@@ -9,6 +9,10 @@ public class AnatomyInteraction : MonoBehaviour
     [Header("Controllers")]
     public OrganHighlighter highlighter;
     public OrganIsolationController isolationController;
+    public ExplodedViewController explodedViewController;
+    public OrganComparisonController comparisonController;
+    public XRayViewController xrayViewController;
+    public CameraInspectionController cameraInspectionController;
 
     private OrganInteractable hoveredOrgan;
     private OrganInteractable selectedOrgan;
@@ -18,6 +22,11 @@ public class AnatomyInteraction : MonoBehaviour
         if (playerCamera == null) playerCamera = Camera.main;
         if (highlighter == null) highlighter = GetComponent<OrganHighlighter>();
         if (isolationController == null) isolationController = GetComponent<OrganIsolationController>();
+        if (explodedViewController == null) explodedViewController = GetComponent<ExplodedViewController>();
+        if (comparisonController == null) comparisonController = GetComponent<OrganComparisonController>();
+        if (xrayViewController == null) xrayViewController = GetComponent<XRayViewController>();
+        if (cameraInspectionController == null) cameraInspectionController = GetComponent<CameraInspectionController>();
+        if (cameraInspectionController == null) cameraInspectionController = FindFirstObjectByType<CameraInspectionController>();
     }
 
     private void Update()
@@ -31,7 +40,7 @@ public class AnatomyInteraction : MonoBehaviour
 
         HandleKeyboardShortcuts();
 
-        // Organ manipulation
+        // Organ rotation & zooming
         if (isolationController != null && isolationController.IsInIsolationMode)
         {
             float rotSpeed = 75f * Time.deltaTime;
@@ -40,10 +49,24 @@ public class AnatomyInteraction : MonoBehaviour
             float scroll = Input.GetAxis("Mouse ScrollWheel");
             isolationController.ZoomIsolatedOrgan(scroll);
         }
+        else if (comparisonController != null && comparisonController.IsInComparisonMode)
+        {
+            float rotSpeed = 70f * Time.deltaTime;
+            if (Input.GetKey(KeyCode.Q)) comparisonController.RotateComparedOrgans(-rotSpeed);
+            if (Input.GetKey(KeyCode.E)) comparisonController.RotateComparedOrgans(rotSpeed);
+        }
         else if (selectedOrgan != null)
         {
-            RotateSelectedOrgan();
-            ZoomSelectedOrgan();
+            float rotSpeed = 65f * Time.deltaTime;
+            if (Input.GetKey(KeyCode.Q)) selectedOrgan.transform.Rotate(Vector3.up, -rotSpeed, Space.World);
+            if (Input.GetKey(KeyCode.E)) selectedOrgan.transform.Rotate(Vector3.up, rotSpeed, Space.World);
+            float scroll = Input.GetAxis("Mouse ScrollWheel");
+            if (Mathf.Abs(scroll) > 0.001f)
+            {
+                Vector3 scale = selectedOrgan.transform.localScale + Vector3.one * scroll * 0.4f;
+                float newScale = Mathf.Clamp(scale.x, 0.2f, 3f);
+                selectedOrgan.transform.localScale = Vector3.one * newScale;
+            }
         }
     }
 
@@ -74,13 +97,20 @@ public class AnatomyInteraction : MonoBehaviour
 
     private void HandleSelection()
     {
-        // Don't select if mouse is over GUI buttons on edges
         Vector2 mousePos = Input.mousePosition;
-        if (mousePos.x < 240 && mousePos.y > Screen.height - 350) return; // System toggle area
-        if (mousePos.x > Screen.width - 360 && mousePos.y > Screen.height - 480) return; // Inspector area
+        // Don't select if clicking on GUI bounds
+        if (mousePos.x < 240 && mousePos.y > Screen.height - 420) return;
+        if (mousePos.x > Screen.width - 380 && mousePos.y > Screen.height - 480) return;
 
         if (hoveredOrgan != null)
         {
+            if (comparisonController != null && comparisonController.IsInComparisonMode)
+            {
+                comparisonController.AddOrganToComparison(hoveredOrgan);
+                if (highlighter != null) highlighter.SelectOrgan(hoveredOrgan);
+                return;
+            }
+
             selectedOrgan = hoveredOrgan;
             selectedOrgan.ShowInformation();
             if (highlighter != null) highlighter.SelectOrgan(selectedOrgan);
@@ -89,7 +119,7 @@ public class AnatomyInteraction : MonoBehaviour
 
     private void HandleKeyboardShortcuts()
     {
-        // Body System visibility toggles: 1-6
+        // 1-6 Body System visibility
         if (BodySystemManager.Instance != null)
         {
             if (Input.GetKeyDown(KeyCode.Alpha1)) BodySystemManager.Instance.ToggleSystem("Skeletal");
@@ -100,16 +130,46 @@ public class AnatomyInteraction : MonoBehaviour
             if (Input.GetKeyDown(KeyCode.Alpha6)) BodySystemManager.Instance.ToggleSystem("Body");
         }
 
-        // Isolation mode: I
+        // Exploded View: X
+        if (Input.GetKeyDown(KeyCode.X))
+        {
+            if (explodedViewController != null) explodedViewController.ToggleExplodedView();
+        }
+
+        // X-Ray View: Z
+        if (Input.GetKeyDown(KeyCode.Z))
+        {
+            if (xrayViewController != null) xrayViewController.ToggleXRay();
+        }
+
+        // Comparison Mode: C
+        if (Input.GetKeyDown(KeyCode.C))
+        {
+            if (comparisonController != null) comparisonController.ToggleComparisonMode(selectedOrgan);
+        }
+
+        // Camera Focus & Orbit: F
+        if (Input.GetKeyDown(KeyCode.F))
+        {
+            if (cameraInspectionController != null)
+            {
+                Transform target = (isolationController != null && isolationController.IsInIsolationMode && isolationController.IsolatedOrgan != null)
+                    ? isolationController.IsolatedOrgan.transform
+                    : (selectedOrgan != null ? selectedOrgan.transform : null);
+                if (target != null) cameraInspectionController.ToggleFocus(target);
+            }
+        }
+
+        // Isolation: I
         if (Input.GetKeyDown(KeyCode.I))
         {
             ToggleIsolationMode();
         }
 
-        // Deselect / Reset: R
+        // Reset / Deselect: R
         if (Input.GetKeyDown(KeyCode.R))
         {
-            DeselectOrgan();
+            ResetAllAnatomy();
         }
     }
 
@@ -127,103 +187,222 @@ public class AnatomyInteraction : MonoBehaviour
         }
     }
 
-    public void DeselectOrgan()
+    public void ResetAllAnatomy()
     {
+        if (cameraInspectionController != null && cameraInspectionController.IsFocusMode)
+        {
+            cameraInspectionController.ExitFocusMode();
+        }
         if (isolationController != null && isolationController.IsInIsolationMode)
         {
             isolationController.ExitIsolation();
         }
+        if (comparisonController != null && comparisonController.IsInComparisonMode)
+        {
+            comparisonController.ExitComparisonMode();
+        }
+        if (explodedViewController != null && explodedViewController.IsExploded)
+        {
+            explodedViewController.ResetExplosion();
+        }
+        if (xrayViewController != null && xrayViewController.IsXRayActive)
+        {
+            xrayViewController.SetXRayActive(false);
+        }
+        if (BodySystemManager.Instance != null)
+        {
+            BodySystemManager.Instance.ShowAllSystems();
+        }
+
         selectedOrgan = null;
         if (highlighter != null) highlighter.ClearSelection();
-    }
-
-    private void RotateSelectedOrgan()
-    {
-        float rotation = 65f * Time.deltaTime;
-        if (Input.GetKey(KeyCode.Q)) selectedOrgan.transform.Rotate(Vector3.up, -rotation, Space.World);
-        if (Input.GetKey(KeyCode.E)) selectedOrgan.transform.Rotate(Vector3.up, rotation, Space.World);
-    }
-
-    private void ZoomSelectedOrgan()
-    {
-        float scroll = Input.GetAxis("Mouse ScrollWheel");
-        if (Mathf.Abs(scroll) > 0.001f)
-        {
-            Vector3 scale = selectedOrgan.transform.localScale + Vector3.one * scroll * 0.4f;
-            float newScale = Mathf.Clamp(scale.x, 0.2f, 3f);
-            selectedOrgan.transform.localScale = Vector3.one * newScale;
-        }
     }
 
     private void OnGUI()
     {
         // 1. TOP HEADER BANNER
-        GUI.Box(new Rect(15, 12, Screen.width - 30, 36), "");
-        GUI.Label(new Rect(25, 20, 500, 24), "<b>IMMERSIVE ANATOMY LAB</b>  |  Phase 2 Clinical 3D Exploration System");
-        
-        string modeStatus = (isolationController != null && isolationController.IsInIsolationMode) 
-            ? "<color=#FFCC00>MODE: ORGAN ISOLATION & HIGH RESOLUTION INSPECTION</color>" 
-            : "<color=#00E5FF>MODE: ANATOMICAL EXPLORATION & SYSTEM NAVIGATION</color>";
-        GUI.Label(new Rect(Screen.width - 480, 20, 460, 24), modeStatus);
+        GUI.Box(new Rect(15, 12, Screen.width - 30, 42), "");
+        GUI.Label(new Rect(25, 22, 540, 24), "<b>IMMERSIVE ANATOMY LAB</b>  |  Phase 3 Advanced Anatomical Interaction");
 
-        // 2. LEFT PANEL: BODY SYSTEM VISIBILITY MANAGER
-        GUI.Box(new Rect(15, 58, 220, 260), "<b>ANATOMICAL SYSTEMS</b>");
+        string modeStatus = "<color=#00E5FF>EXPLORATION</color>";
+        if (cameraInspectionController != null && cameraInspectionController.IsFocusMode)
+            modeStatus = "<color=#33FF88>CAMERA FOCUS & ORBIT MODE</color>";
+        else if (explodedViewController != null && explodedViewController.IsExploded)
+            modeStatus = "<color=#FF9900>EXPLODED ANATOMY VIEW</color>";
+        else if (isolationController != null && isolationController.IsInIsolationMode)
+            modeStatus = "<color=#FFCC00>ORGAN ISOLATION MODE</color>";
+        else if (comparisonController != null && comparisonController.IsInComparisonMode)
+            modeStatus = "<color=#CC44FF>ORGAN COMPARISON MODE</color>";
+        else if (xrayViewController != null && xrayViewController.IsXRayActive)
+            modeStatus = "<color=#00FFFF>X-RAY FLUOROSCOPY MODE</color>";
+        else if (comparisonController != null && comparisonController.IsInComparisonMode)
+            modeStatus = "<color=#CC44FF>ORGAN COMPARISON MODE</color>";
+        else if (xrayViewController != null && xrayViewController.IsXRayActive)
+            modeStatus = "<color=#00FFFF>X-RAY FLUOROSCOPY MODE</color>";
+
+        GUI.Label(new Rect(Screen.width - 340, 22, 320, 24), $"<b>ACTIVE MODE:</b> {modeStatus}");
+
+        // 2. LEFT PANEL: ANATOMICAL SYSTEMS & ADVANCED VIEW MODES
+        GUI.Box(new Rect(15, 62, 230, 395), "<b>INTERACTIVE CONTROLS</b>");
+        
+        // System Visibility Toggles
         if (BodySystemManager.Instance != null)
         {
+            GUI.Label(new Rect(25, 86, 210, 20), "<b>Body Systems Visibility:</b>");
             string[] sysKeys = new string[] { "Body", "Skeletal", "Cardiovascular", "Respiratory", "Nervous", "Digestive" };
             string[] sysNums = new string[] { "[6]", "[1]", "[2]", "[3]", "[4]", "[5]" };
             for (int i = 0; i < sysKeys.Length; i++)
             {
                 bool isVis = BodySystemManager.Instance.IsSystemVisible(sysKeys[i]);
-                string label = $"{sysNums[i]} {sysKeys[i]}: {(isVis ? "<color=#00FF88>VISIBLE</color>" : "<color=#FF4444>HIDDEN</color>")}";
-                if (GUI.Button(new Rect(25, 88 + i * 28, 200, 24), label))
+                string label = $"{sysNums[i]} {sysKeys[i]}: {(isVis ? "<color=#00FF88>ON</color>" : "<color=#FF4444>OFF</color>")}";
+                if (GUI.Button(new Rect(25, 108 + i * 26, 210, 22), label))
                 {
                     BodySystemManager.Instance.ToggleSystem(sysKeys[i]);
                 }
             }
-
-            if (GUI.Button(new Rect(25, 260, 95, 22), "Show All")) BodySystemManager.Instance.ShowAllSystems();
-            if (GUI.Button(new Rect(130, 260, 95, 22), "Hide All")) BodySystemManager.Instance.HideAllSystems();
         }
 
-        // 3. RIGHT PANEL: CLINICAL ORGAN INSPECTOR
-        int rightW = 340;
-        int rightX = Screen.width - rightW - 15;
-        GUI.Box(new Rect(rightX, 58, rightW, 360), "<b>CLINICAL ORGAN INSPECTOR</b>");
-
-        if (selectedOrgan != null)
+        // View Mode Toggles
+        GUI.Label(new Rect(25, 272, 210, 20), "<b>Advanced View Modes:</b>");
+        
+        // Exploded View Button
+        bool isExp = explodedViewController != null && explodedViewController.IsExploded;
+        string expText = isExp ? "Assemble Anatomy [X]" : "Exploded View [X]";
+        if (GUI.Button(new Rect(25, 294, 210, 24), expText))
         {
-            GUI.Label(new Rect(rightX + 15, 88, rightW - 30, 22), $"<b>Organ:</b> <color=#00E5FF>{selectedOrgan.organName}</color>");
-            GUI.Label(new Rect(rightX + 15, 110, rightW - 30, 22), $"<b>System:</b> {selectedOrgan.bodySystem}  |  <b>Mass:</b> {selectedOrgan.normalWeight}g");
-            
-            GUI.Label(new Rect(rightX + 15, 134, rightW - 30, 48), $"<b>Physiology:</b>\n{selectedOrgan.description}");
-            GUI.Label(new Rect(rightX + 15, 186, rightW - 30, 42), $"<b>Blood Supply:</b> {selectedOrgan.arterialSupply}");
-            GUI.Label(new Rect(rightX + 15, 232, rightW - 30, 42), $"<b>Innervation:</b> {selectedOrgan.innervation}");
-            GUI.Label(new Rect(rightX + 15, 278, rightW - 30, 42), $"<b>Clinical Notes:</b> {selectedOrgan.commonPathology}");
+            if (explodedViewController != null) explodedViewController.ToggleExplodedView();
+        }
 
-            // Action Buttons
-            bool inIso = isolationController != null && isolationController.IsInIsolationMode;
-            string isoText = inIso ? "Exit Isolation [I]" : "Isolate Organ [I]";
-            if (GUI.Button(new Rect(rightX + 15, 330, 150, 26), isoText))
+        // X-Ray Mode Button
+        bool isXRay = xrayViewController != null && xrayViewController.IsXRayActive;
+        string xrayText = isXRay ? "Disable X-Ray [Z]" : "X-Ray Mode [Z]";
+        if (GUI.Button(new Rect(25, 322, 210, 24), xrayText))
+        {
+            if (xrayViewController != null) xrayViewController.ToggleXRay();
+        }
+
+        // Comparison Mode Button
+        bool isComp = comparisonController != null && comparisonController.IsInComparisonMode;
+        string compText = isComp ? "Exit Comparison [C]" : "Compare Organs [C]";
+        if (GUI.Button(new Rect(25, 350, 210, 24), compText))
+        {
+            if (comparisonController != null) comparisonController.ToggleComparisonMode(selectedOrgan);
+        }
+
+        // Reset Anatomy Button
+        if (GUI.Button(new Rect(25, 380, 210, 28), "<b>RESET ANATOMY [R]</b>"))
+        {
+            ResetAllAnatomy();
+        }
+
+        // 3. RIGHT PANEL: CLINICAL INSPECTOR OR COMPARISON MATRIX
+        int rightW = 360;
+        int rightX = Screen.width - rightW - 15;
+
+        if (comparisonController != null && comparisonController.IsInComparisonMode)
+        {
+            // COMPARISON MATRIX PANEL
+            GUI.Box(new Rect(rightX, 62, rightW, 430), "<b>ORGAN COMPARISON MATRIX</b>");
+            
+            OrganInteractable a = comparisonController.OrganA;
+            OrganInteractable b = comparisonController.OrganB;
+
+            if (a == null)
             {
-                ToggleIsolationMode();
+                GUI.Label(new Rect(rightX + 15, 95, rightW - 30, 40), "<i>Click any organ to place it on Pedestal A.</i>");
+            }
+            else
+            {
+                GUI.Label(new Rect(rightX + 15, 90, rightW - 30, 22), $"<b>Organ A:</b> <color=#00E5FF>{a.organName}</color> ({a.bodySystem})");
+                GUI.Label(new Rect(rightX + 15, 110, rightW - 30, 20), $"Mass: <b>{a.normalWeight}g</b> | Supply: {a.arterialSupply}");
             }
 
-            if (GUI.Button(new Rect(rightX + 175, 330, 150, 26), "Deselect [R]"))
+            GUI.Box(new Rect(rightX + 15, 140, rightW - 30, 2), "");
+
+            if (b == null)
             {
-                DeselectOrgan();
+                GUI.Label(new Rect(rightX + 15, 150, rightW - 30, 40), "<i>Click a second organ to place on Pedestal B for side-by-side comparative analysis.</i>");
+            }
+            else
+            {
+                GUI.Label(new Rect(rightX + 15, 150, rightW - 30, 22), $"<b>Organ B:</b> <color=#FFCC00>{b.organName}</color> ({b.bodySystem})");
+                GUI.Label(new Rect(rightX + 15, 170, rightW - 30, 20), $"Mass: <b>{b.normalWeight}g</b> | Supply: {b.arterialSupply}");
+
+                // Comparative Differential
+                if (a != null)
+                {
+                    float diff = Mathf.Abs(a.normalWeight - b.normalWeight);
+                    string heavier = a.normalWeight >= b.normalWeight ? a.organName : b.organName;
+                    GUI.Label(new Rect(rightX + 15, 200, rightW - 30, 22), $"<b>Mass Difference:</b> {diff:F0}g ({heavier} is heavier)");
+                    
+                    GUI.Label(new Rect(rightX + 15, 230, rightW - 30, 50), $"<b>{a.organName} Physiology:</b>\n{a.description}");
+                    GUI.Label(new Rect(rightX + 15, 290, rightW - 30, 50), $"<b>{b.organName} Physiology:</b>\n{b.description}");
+                    GUI.Label(new Rect(rightX + 15, 350, rightW - 30, 40), $"<b>Pathology Contrast:</b>\n{a.commonPathology} vs {b.commonPathology}");
+                }
+            }
+
+            if (GUI.Button(new Rect(rightX + 15, 395, rightW - 30, 26), "Exit Comparison Mode [C]"))
+            {
+                comparisonController.ExitComparisonMode();
             }
         }
         else
         {
-            GUI.Label(new Rect(rightX + 15, 100, rightW - 30, 24), "<i>No organ currently selected.</i>");
-            GUI.Label(new Rect(rightX + 15, 130, rightW - 30, 45), "Aim the center crosshair at any organ (Heart, Brain, Lungs, Liver, Stomach) and click to inspect.");
-            GUI.Label(new Rect(rightX + 15, 180, rightW - 30, 45), "Use keys <b>[1]-[6]</b> to hide or reveal individual anatomical systems.");
+            // SINGLE ORGAN CLINICAL INSPECTOR
+            GUI.Box(new Rect(rightX, 62, rightW, 435), "<b>CLINICAL ORGAN INSPECTOR</b>");
+
+            if (selectedOrgan != null)
+            {
+                GUI.Label(new Rect(rightX + 15, 90, rightW - 30, 22), $"<b>Organ:</b> <color=#00E5FF>{selectedOrgan.organName}</color>");
+                GUI.Label(new Rect(rightX + 15, 112, rightW - 30, 22), $"<b>System:</b> {selectedOrgan.bodySystem}  |  <b>Mass:</b> {selectedOrgan.normalWeight}g");
+                GUI.Label(new Rect(rightX + 15, 136, rightW - 30, 48), $"<b>Physiology:</b>\n{selectedOrgan.description}");
+                GUI.Label(new Rect(rightX + 15, 188, rightW - 30, 42), $"<b>Blood Supply:</b> {selectedOrgan.arterialSupply}");
+                GUI.Label(new Rect(rightX + 15, 234, rightW - 30, 42), $"<b>Innervation:</b> {selectedOrgan.innervation}");
+                GUI.Label(new Rect(rightX + 15, 280, rightW - 30, 42), $"<b>Clinical Notes:</b> {selectedOrgan.commonPathology}");
+
+                bool inIso = isolationController != null && isolationController.IsInIsolationMode;
+                string isoText = inIso ? "Exit Isolation [I]" : "Isolate Organ [I]";
+                if (GUI.Button(new Rect(rightX + 15, 330, 160, 26), isoText))
+                {
+                    ToggleIsolationMode();
+                }
+
+                if (GUI.Button(new Rect(rightX + 185, 330, 160, 26), "Compare [C]"))
+                {
+                    if (comparisonController != null) comparisonController.StartComparisonMode(selectedOrgan);
+                }
+
+                bool isFocus = cameraInspectionController != null && cameraInspectionController.IsFocusMode;
+                string focusText = isFocus ? "Exit Focus [F]" : "Focus Camera & Orbit [F]";
+                if (GUI.Button(new Rect(rightX + 15, 362, rightW - 30, 26), focusText))
+                {
+                    if (cameraInspectionController != null)
+                    {
+                        Transform target = (isolationController != null && isolationController.IsInIsolationMode && isolationController.IsolatedOrgan != null)
+                            ? isolationController.IsolatedOrgan.transform
+                            : (selectedOrgan != null ? selectedOrgan.transform : null);
+                        if (target != null) cameraInspectionController.ToggleFocus(target);
+                    }
+                }
+
+                if (GUI.Button(new Rect(rightX + 15, 394, rightW - 30, 24), "Deselect [R]"))
+                {
+                    ResetAllAnatomy();
+                }
+            }
+            else
+            {
+                GUI.Label(new Rect(rightX + 15, 105, rightW - 30, 24), "<i>No organ currently selected.</i>");
+                GUI.Label(new Rect(rightX + 15, 135, rightW - 30, 45), "Aim the center crosshair at any organ and click to inspect clinical anatomy.");
+                GUI.Label(new Rect(rightX + 15, 185, rightW - 30, 45), "Press <b>[X]</b> to trigger the <b>Exploded Anatomy View</b>, smoothly separating organs along physiological axes.");
+                GUI.Label(new Rect(rightX + 15, 240, rightW - 30, 45), "Press <b>[Z]</b> for <b>X-Ray Fluoroscopy</b> or <b>[C]</b> to compare two organs side-by-side.");
+                GUI.Label(new Rect(rightX + 15, 295, rightW - 30, 45), "Press <b>[F]</b> to focus camera and right-click drag to orbit/inspect closely.");
+            }
         }
 
         // 4. BOTTOM CONTROLS QUICK BAR
         GUI.Box(new Rect(15, Screen.height - 45, Screen.width - 30, 32), "");
-        string hint = "<b>Controls:</b> WASD Move | Mouse Look | Left Click Select | Q/E Rotate Organ | Scroll Zoom | I Isolate Organ | 1-6 Systems | Esc Cursor";
+        string hint = "<b>Phase 3 Controls:</b> WASD Move | Mouse Look | Click Select | Q/E Rotate | Scroll Zoom | F Focus/Orbit | X Explode | Z X-Ray | C Compare | I Isolate | 1-6 Systems | R Reset";
         GUI.Label(new Rect(25, Screen.height - 39, Screen.width - 50, 24), hint);
     }
 }

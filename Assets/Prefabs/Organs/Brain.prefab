@@ -87,15 +87,12 @@ MonoBehaviour:
   organName: Human Brain
   bodySystem: Nervous
   normalWeight: 1400
-  description: 'Central command organ of the human nervous system: cerebrum, cerebellum,
+  description: 'Central command organ of the nervous system: cerebrum, cerebellum,
     and brainstem.'
-  arterialSupply: Circle of Willis (internal carotid and vertebral-basilar arterial
-    system).
-  innervation: 12 pairs of cranial nerves and 31 pairs of spinal cord segments.
-  clinicalFunction: Higher cognition, voluntary motor planning, somatosensation,
-    autonomic homeostatic control.
-  commonPathology: Stroke (ischemic/hemorrhagic), traumatic brain injury, Alzheimer's,
-    Parkinson's.
+  arterialSupply: Circle of Willis (internal carotid and vertebral-basilar system).
+  innervation: 12 pairs of cranial nerves and 31 pairs of spinal segments.
+  clinicalFunction: Cognition, motor planning, sensory processing, autonomic regulation.
+  commonPathology: Stroke (ischemic/hemorrhagic), traumatic brain injury, Alzheimer's.
   originalLocalPosition: {x: 0, y: 0, z: 0}
   originalLocalRotation: {x: 0, y: 0, z: 0, w: 0}
   originalLocalScale: {x: 0, y: 0, z: 0}

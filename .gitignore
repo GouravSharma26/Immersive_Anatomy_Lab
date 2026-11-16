@@ -25,3 +25,9 @@
 # OS generated
 .DS_Store
 Thumbs.db
+
+# Build logs and diagnostics
+*.log
+*.png
+unity_interop.ps1
+

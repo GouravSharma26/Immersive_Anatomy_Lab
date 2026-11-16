@@ -89,12 +89,11 @@ MonoBehaviour:
   normalWeight: 1050
   description: Primary gas-exchange organs. Right lung has 3 lobes; left lung has
     2 lobes with cardiac notch.
-  arterialSupply: Bronchial arteries (nutritive) & Pulmonary arteries (functional
-    gas exchange).
-  innervation: Pulmonary plexus (Vagus CN X and sympathetic chains).
+  arterialSupply: Bronchial arteries (nutritive) & Pulmonary arteries (gas exchange).
+  innervation: Pulmonary plexus (Vagus CN X & sympathetic chains).
   clinicalFunction: 'Alveolar gas diffusion: uptakes atmospheric O2 and eliminates
-    metabolic CO2.'
-  commonPathology: Pneumonia, COPD, asthma, pulmonary embolism, atelectasis.
+    CO2.'
+  commonPathology: Pneumonia, COPD, asthma, pulmonary embolism.
   originalLocalPosition: {x: 0, y: 0, z: 0}
   originalLocalRotation: {x: 0, y: 0, z: 0, w: 0}
   originalLocalScale: {x: 0, y: 0, z: 0}

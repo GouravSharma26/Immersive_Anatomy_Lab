@@ -87,15 +87,11 @@ MonoBehaviour:
   organName: Human Heart
   bodySystem: Cardiovascular
   normalWeight: 310
-  description: Muscular organ with 4 chambers (atria and ventricles) that powers
-    systemic and pulmonary blood circulation.
-  arterialSupply: Left and Right Coronary Arteries (branching from the ascending
-    aorta sinuses).
-  innervation: Cardiac plexus (Vagus nerve [CN X] parasympathetic; T1-T4 sympathetic).
-  clinicalFunction: Pumps ~70 mL/beat, maintaining ~5 L/min cardiac output to perfuse
-    all vital organs.
-  commonPathology: Coronary artery disease, myocardial infarction, arrhythmias, valvular
-    stenosis.
+  description: Four-chambered muscular organ powering systemic and pulmonary circulation.
+  arterialSupply: Left & Right Coronary Arteries (arising from aortic sinuses).
+  innervation: Cardiac plexus (Vagus nerve [CN X] parasympathetic & T1-T4 sympathetic).
+  clinicalFunction: Pumps ~70 mL/beat, maintaining ~5 L/min cardiac output.
+  commonPathology: Coronary artery disease, myocardial infarction, arrhythmias.
   originalLocalPosition: {x: 0, y: 0, z: 0}
   originalLocalRotation: {x: 0, y: 0, z: 0, w: 0}
   originalLocalScale: {x: 0, y: 0, z: 0}

@@ -115,13 +115,13 @@ MonoBehaviour:
   bodySystem: Digestive / Metabolic
   normalWeight: 1550
   description: Largest internal visceral organ, divided into right and left lobes
-    by the falciform ligament.
-  arterialSupply: 'Dual supply: Hepatic artery proper (25%) and Hepatic portal vein
+    by falciform ligament.
+  arterialSupply: 'Dual supply: Hepatic artery proper (25%) & Hepatic portal vein
     (75%).'
   innervation: Hepatic plexus (Celiac ganglia and Vagus nerve).
   clinicalFunction: Bile secretion for fat emulsification, glycogen storage, protein
     synthesis, detoxification.
-  commonPathology: Cirrhosis, hepatitis A/B/C, NAFLD/NASH, hepatocellular carcinoma.
+  commonPathology: Cirrhosis, viral hepatitis, NAFLD/NASH, hepatocellular carcinoma.
   originalLocalPosition: {x: 0, y: 0, z: 0}
   originalLocalRotation: {x: 0, y: 0, z: 0, w: 0}
   originalLocalScale: {x: 0, y: 0, z: 0}

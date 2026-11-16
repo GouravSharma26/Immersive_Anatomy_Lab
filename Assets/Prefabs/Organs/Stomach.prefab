@@ -114,15 +114,13 @@ MonoBehaviour:
   organName: Stomach & Intestines
   bodySystem: Digestive
   normalWeight: 1200
-  description: J-shaped muscular organ and enteric tract responsible for chemical
-    digestion and nutrient absorption.
-  arterialSupply: Celiac trunk (left gastric, splenic, common hepatic branches) and
-    Mesenteric arteries.
+  description: J-shaped muscular organ and enteric tract for chemical digestion and
+    nutrient absorption.
+  arterialSupply: Celiac trunk & Mesenteric arteries.
   innervation: Enteric nervous system with Vagus nerve parasympathetic input.
   clinicalFunction: Secretes gastric acid (HCl) and pepsin; peristaltic churning
     into chyme.
-  commonPathology: Peptic ulcer disease, GERD, gastritis, Crohn's disease, colorectal
-    cancer.
+  commonPathology: Peptic ulcer disease, GERD, gastritis, Crohn's disease.
   originalLocalPosition: {x: 0, y: 0, z: 0}
   originalLocalRotation: {x: 0, y: 0, z: 0, w: 0}
   originalLocalScale: {x: 0, y: 0, z: 0}
