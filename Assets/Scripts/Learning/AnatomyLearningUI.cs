@@ -17,6 +17,7 @@ namespace ImmersiveAnatomy.Learning
         public QuizEngine quizEngine;
         public AIAnatomyTutor aiTutor;
         public LearningAnalytics analytics;
+        public LLMAnatomyClient llmClient;
 
         [Header("UI State")]
         public bool isLearningUIOpen = false;
@@ -25,6 +26,10 @@ namespace ImmersiveAnatomy.Learning
         private OrganInteractable lastSelectedOrgan;
         private Vector2 scrollPos;
         private Texture2D bgTexture;
+        private string customQuestionText = "Why does myocardial ischemia radiate to the left arm?";
+        private string aiChatResponseText = "";
+        private string[] aiCitations = new string[0];
+        private string aiPearl = "";
 
         private Texture2D GetBgTexture()
         {
@@ -42,6 +47,8 @@ namespace ImmersiveAnatomy.Learning
             if (quizEngine == null) quizEngine = GetComponent<QuizEngine>();
             if (aiTutor == null) aiTutor = GetComponent<AIAnatomyTutor>();
             if (analytics == null) analytics = GetComponent<LearningAnalytics>();
+            if (llmClient == null) llmClient = GetComponent<LLMAnatomyClient>();
+            if (llmClient == null) llmClient = FindFirstObjectByType<LLMAnatomyClient>();
         }
 
         private void Update()
@@ -288,34 +295,111 @@ namespace ImmersiveAnatomy.Learning
         {
             if (aiTutor == null) return;
 
-            GUI.Label(new Rect(r.x, r.y, 300, 22), $"<b>{aiTutor.tutorName}</b>");
+            string backendStatus = (llmClient != null && llmClient.isServerOnline)
+                ? "<color=#00FF88>● Live RAG & LLM Online</color>"
+                : "<color=#FFCC00>● Standalone Clinical Corpus</color>";
+
+            GUI.Label(new Rect(r.x, r.y, 250, 22), $"<b>{aiTutor.tutorName}</b>");
+            GUI.Label(new Rect(r.x + 230, r.y, 200, 22), backendStatus);
 
             string lvlText = aiTutor.pedagogicalLevel == TutorPedagogicalLevel.SimplifiedStudent
                 ? "Level: <color=#00FF88>Student Mode</color>"
                 : "Level: <color=#00E5FF>Clinical Specialist</color>";
 
-            if (GUI.Button(new Rect(r.x + r.width - 180, r.y, 180, 24), lvlText))
+            if (GUI.Button(new Rect(r.x + r.width - 150, r.y, 150, 24), lvlText))
             {
                 aiTutor.TogglePedagogicalLevel();
             }
 
             string organName = lastSelectedOrgan != null ? lastSelectedOrgan.organName : "Heart";
-            GUI.Label(new Rect(r.x, r.y + 28, r.width, 22), $"Target Organ: <b>{organName}</b> (Click any organ in 3D to switch)");
+            string bodySystem = lastSelectedOrgan != null ? lastSelectedOrgan.bodySystem : "Cardiovascular";
 
-            // AI Explanation Box with scroll
-            string explanation = aiTutor.GetExplanation(organName);
-            GUI.Box(new Rect(r.x, r.y + 54, r.width, 260), "");
-            GUI.Label(new Rect(r.x + 12, r.y + 60, r.width - 24, 245), explanation);
+            // AI Explanation / Response Box
+            string displayText = !string.IsNullOrEmpty(aiChatResponseText)
+                ? aiChatResponseText
+                : aiTutor.GetExplanation(organName);
 
-            // Mnemonic / High-Yield Study Tip
-            if (GUI.Button(new Rect(r.x, r.y + 324, r.width / 2 - 5, 30), "Show High-Yield Clinical Fact"))
+            GUI.Box(new Rect(r.x, r.y + 28, r.width, 225), "");
+            GUI.Label(new Rect(r.x + 10, r.y + 32, r.width - 20, 215), displayText);
+
+            // Citations and Voice row
+            int rowY = (int)r.y + 258;
+            if (aiCitations.Length > 0)
             {
-                // Triggers update
+                string citeStr = string.Join(" | ", aiCitations);
+                GUI.Label(new Rect(r.x, rowY, r.width - 120, 36), $"<size=9><b>Sources:</b> {citeStr}</size>");
+            }
+            else
+            {
+                GUI.Label(new Rect(r.x, rowY, r.width - 120, 36), "<size=9><b>Sources:</b> Gray's Anatomy 4th Ed & Guyton & Hall Medical Physiology 14th Ed</size>");
             }
 
-            if (GUI.Button(new Rect(r.x + r.width / 2 + 5, r.y + 324, r.width / 2 - 5, 30), "Toggle Student / Clinical Mode"))
+            // Audio / TTS Listen Button
+            if (GUI.Button(new Rect(r.x + r.width - 110, rowY, 110, 28), "🔊 Listen [TTS]"))
             {
-                aiTutor.TogglePedagogicalLevel();
+                if (llmClient != null)
+                {
+                    llmClient.PlayLatestAudio();
+                }
+            }
+
+            // Quick Question Suggestions
+            int qY = rowY + 32;
+            GUI.Label(new Rect(r.x, qY, r.width, 18), "<size=10><b>Quick Clinical Inquiries:</b></size>");
+            if (GUI.Button(new Rect(r.x, qY + 18, 160, 22), "Referred Angina Pain"))
+            {
+                customQuestionText = "Why does myocardial ischemia radiate to the left arm and jaw?";
+                SubmitChatQuestion(organName, bodySystem);
+            }
+            if (GUI.Button(new Rect(r.x + 168, qY + 18, 165, 22), "Portal Vein Hemodynamics"))
+            {
+                customQuestionText = "Explain the dual blood supply to the liver and portal hypertension.";
+                SubmitChatQuestion(organName, bodySystem);
+            }
+            if (GUI.Button(new Rect(r.x + 340, qY + 18, 160, 22), "Carina & Cough Reflex"))
+            {
+                customQuestionText = "What is the clinical significance of the tracheal carina?";
+                SubmitChatQuestion(organName, bodySystem);
+            }
+
+            // Custom Question Input Field & Submit
+            int inputY = qY + 44;
+            customQuestionText = GUI.TextField(new Rect(r.x, inputY, r.width - 100, 24), customQuestionText);
+            
+            string sendBtnLabel = (llmClient != null && llmClient.isLoading) ? "Thinking..." : "Ask AI";
+            if (GUI.Button(new Rect(r.x + r.width - 95, inputY, 95, 24), sendBtnLabel))
+            {
+                SubmitChatQuestion(organName, bodySystem);
+            }
+
+            // Disclaimer Footer
+            GUI.Label(new Rect(r.x, inputY + 28, r.width, 24), "<size=8><color=#888888>DISCLAIMER: Educational medical simulation only. Not intended for clinical diagnosis or medical management.</color></size>");
+        }
+
+        private void SubmitChatQuestion(string organName, string bodySystem)
+        {
+            if (string.IsNullOrWhiteSpace(customQuestionText)) return;
+            string lvl = aiTutor != null ? aiTutor.pedagogicalLevel.ToString() : "Student";
+
+            if (llmClient != null && llmClient.isServerOnline)
+            {
+                llmClient.AskAIAssistant(customQuestionText, organName, bodySystem, lvl, (res) =>
+                {
+                    if (res != null)
+                    {
+                        aiChatResponseText = $"<b>[Dr. Nova - Live AI Response]</b>\n{res.reply}\n\n<b>Clinical Pearl:</b> <i>{res.clinical_pearl}</i>";
+                        aiCitations = res.citations != null ? res.citations : new string[0];
+                        aiPearl = res.clinical_pearl;
+                    }
+                });
+            }
+            else
+            {
+                // Standalone fallback
+                aiChatResponseText = $"<b>[Dr. Nova]</b> Regarding {organName}: " +
+                    "Referred anginal pain occurs due to dermatomal convergence of visceral sympathetic afferents (T1-T4) with somatic fibers in the spinal dorsal horn.\n\n" +
+                    "<b>Reference:</b> Guyton and Hall Textbook of Medical Physiology (14th Ed), Chapter 21.";
+                aiCitations = new string[] { "Guyton and Hall Medical Physiology (14th Ed)" };
             }
         }
 

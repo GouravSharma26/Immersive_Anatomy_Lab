@@ -27,6 +27,7 @@ namespace ImmersiveAnatomy.Learning
         [Header("Tutor Settings")]
         public TutorPedagogicalLevel pedagogicalLevel = TutorPedagogicalLevel.SimplifiedStudent;
         public string tutorName = "Dr. Nova (AI Anatomy Assistant)";
+        public LLMAnatomyClient llmClient;
 
         [Header("API Integration (Optional)")]
         public string customApiEndpoint = "";
@@ -36,6 +37,8 @@ namespace ImmersiveAnatomy.Learning
 
         private void Awake()
         {
+            if (llmClient == null) llmClient = GetComponent<LLMAnatomyClient>();
+            if (llmClient == null) llmClient = FindFirstObjectByType<LLMAnatomyClient>();
             InitializeKnowledgeBase();
         }
 
