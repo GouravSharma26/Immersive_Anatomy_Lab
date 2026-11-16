@@ -235,7 +235,7 @@ public class AnatomyInteraction : MonoBehaviour
     {
         // 1. TOP HEADER BANNER
         GUI.Box(new Rect(15, 12, Screen.width - 30, 42), "");
-        GUI.Label(new Rect(25, 22, 560, 24), "<b>IMMERSIVE ANATOMY LAB</b>  |  Phase 4 AI-Powered Learning & Clinical Quiz System");
+        GUI.Label(new Rect(25, 22, 590, 24), "<b>IMMERSIVE ANATOMY LAB</b>  |  Phase 5 Intelligent AI Anatomy Assistant (LLM + RAG + TTS)");
 
         string modeStatus = "<color=#00E5FF>EXPLORATION</color>";
         if (learningUI != null && learningUI.isLearningUIOpen)
@@ -432,7 +432,7 @@ public class AnatomyInteraction : MonoBehaviour
 
         // 4. BOTTOM CONTROLS QUICK BAR
         GUI.Box(new Rect(15, Screen.height - 45, Screen.width - 30, 32), "");
-        string hint = "<b>Phase 4 Controls:</b> WASD Move | Mouse Look | Click Select | Q/E Rotate | Scroll Zoom | F Focus/Orbit | L Quiz & AI Tutor | X Explode | Z X-Ray | C Compare | I Isolate | 1-6 Systems | R Reset";
+        string hint = "<b>Phase 5 Controls:</b> WASD Move | Mouse Look | Click Select | Q/E Rotate | Scroll Zoom | F Focus/Orbit | L AI Tutor & Quiz | X Explode | Z X-Ray | C Compare | I Isolate | 1-6 Systems | R Reset";
         GUI.Label(new Rect(25, Screen.height - 39, Screen.width - 50, 24), hint);
     }
 }

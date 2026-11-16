@@ -299,14 +299,14 @@ namespace ImmersiveAnatomy.Learning
                 ? "<color=#00FF88>● Live RAG & LLM Online</color>"
                 : "<color=#FFCC00>● Standalone Clinical Corpus</color>";
 
-            GUI.Label(new Rect(r.x, r.y, 250, 22), $"<b>{aiTutor.tutorName}</b>");
-            GUI.Label(new Rect(r.x + 230, r.y, 200, 22), backendStatus);
+            GUI.Label(new Rect(r.x, r.y, 215, 22), $"<b>{aiTutor.tutorName}</b>");
+            GUI.Label(new Rect(r.x + 220, r.y, 155, 22), backendStatus);
 
             string lvlText = aiTutor.pedagogicalLevel == TutorPedagogicalLevel.SimplifiedStudent
-                ? "Level: <color=#00FF88>Student Mode</color>"
-                : "Level: <color=#00E5FF>Clinical Specialist</color>";
+                ? "Level: <color=#00FF88>Student</color>"
+                : "Level: <color=#00E5FF>Clinical</color>";
 
-            if (GUI.Button(new Rect(r.x + r.width - 150, r.y, 150, 24), lvlText))
+            if (GUI.Button(new Rect(r.x + r.width - 130, r.y, 130, 24), lvlText))
             {
                 aiTutor.TogglePedagogicalLevel();
             }
