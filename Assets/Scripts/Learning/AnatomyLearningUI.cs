@@ -86,6 +86,8 @@ namespace ImmersiveAnatomy.Learning
         private void OnGUI()
         {
             if (!isLearningUIOpen) return;
+            string activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            if (activeScene.IndexOf("VR", System.StringComparison.OrdinalIgnoreCase) >= 0) return;
 
             int modalW = 540;
             int modalH = 490;

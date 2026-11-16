@@ -85,7 +85,19 @@ namespace ImmersiveAnatomy.VR
 
             PlaySound(grabAudioClip, 0.8f);
 
-            // Inform VR Clinical Tablet and Manager
+            // Inform VR Dissection Console, AI Pod, Quiz Station, and Clinical Tablet
+            if (VRDissectionTableConsole.Instance != null)
+            {
+                VRDissectionTableConsole.Instance.DisplayOrganMetrics(organData, this);
+            }
+            if (VRAINovaPod.Instance != null)
+            {
+                VRAINovaPod.Instance.SetOrganContext(organData);
+            }
+            if (VRQuizStation.Instance != null)
+            {
+                VRQuizStation.Instance.OnOrganInteractedInLab(organData);
+            }
             if (VRClinicalTablet.Instance != null)
             {
                 VRClinicalTablet.Instance.OnOrganGrabbed(organData, this);
@@ -102,6 +114,24 @@ namespace ImmersiveAnatomy.VR
             if (dist <= snapDistance)
             {
                 SnapToSocket();
+            }
+            else if (VRComparisonBay.Instance != null && VRComparisonBay.Instance.leftPedestalMount != null &&
+                     Vector3.Distance(transform.position, VRComparisonBay.Instance.leftPedestalMount.position) < 0.65f)
+            {
+                transform.position = VRComparisonBay.Instance.leftPedestalMount.position + Vector3.up * 0.15f;
+                organRigidbody.linearVelocity = Vector3.zero;
+                organRigidbody.angularVelocity = Vector3.zero;
+                organRigidbody.isKinematic = true;
+                VRComparisonBay.Instance.PlaceOrganOnPedestal(organData, this, true);
+            }
+            else if (VRComparisonBay.Instance != null && VRComparisonBay.Instance.rightPedestalMount != null &&
+                     Vector3.Distance(transform.position, VRComparisonBay.Instance.rightPedestalMount.position) < 0.65f)
+            {
+                transform.position = VRComparisonBay.Instance.rightPedestalMount.position + Vector3.up * 0.15f;
+                organRigidbody.linearVelocity = Vector3.zero;
+                organRigidbody.angularVelocity = Vector3.zero;
+                organRigidbody.isKinematic = true;
+                VRComparisonBay.Instance.PlaceOrganOnPedestal(organData, this, false);
             }
             else if (floatWhenReleased)
             {
@@ -219,6 +249,11 @@ namespace ImmersiveAnatomy.VR
 
             PlaySound(snapAudioClip, 0.9f);
 
+            if (VRDissectionTableConsole.Instance != null)
+            {
+                VRDissectionTableConsole.Instance.UpdateCardDefault();
+            }
+
             if (VRClinicalTablet.Instance != null)
             {
                 VRClinicalTablet.Instance.OnOrganSnapped(organData, this);
@@ -234,3 +269,4 @@ namespace ImmersiveAnatomy.VR
         }
     }
 }
+// Phase 6 XR Organ Grab & Socket Snapping Verified

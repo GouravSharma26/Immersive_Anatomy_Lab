@@ -15,6 +15,9 @@ public class AnatomyInteraction : MonoBehaviour
     public CameraInspectionController cameraInspectionController;
     public ImmersiveAnatomy.Learning.AnatomyLearningUI learningUI;
 
+    [Header("Display Settings")]
+    public bool showDesktopHUD = true;
+
     private OrganInteractable hoveredOrgan;
     private OrganInteractable selectedOrgan;
 
@@ -233,6 +236,10 @@ public class AnatomyInteraction : MonoBehaviour
 
     private void OnGUI()
     {
+        if (!showDesktopHUD) return;
+        string activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+        if (activeScene.IndexOf("VR", System.StringComparison.OrdinalIgnoreCase) >= 0) return;
+
         // 1. TOP HEADER BANNER
         GUI.Box(new Rect(15, 12, Screen.width - 30, 42), "");
         GUI.Label(new Rect(25, 22, 590, 24), "<b>IMMERSIVE ANATOMY LAB</b>  |  Phase 5 Intelligent AI Anatomy Assistant (LLM + RAG + TTS)");
