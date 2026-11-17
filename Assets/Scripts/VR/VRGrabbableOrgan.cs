@@ -6,9 +6,15 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 namespace ImmersiveAnatomy.VR
 {
+    /// <summary>
+    /// Non-grab raycast interactable organ specimen.
+    /// Strictly complies with the project's zero-organ-grabbing requirement:
+    /// Derives from XRSimpleInteractable (NOT XRGrabInteractable) to allow raycast hover,
+    /// examination, and deterministic socket/pedestal snapping without physics grabbing or dragging.
+    /// </summary>
     [RequireComponent(typeof(Rigidbody))]
     [RequireComponent(typeof(Collider))]
-    public class VRGrabbableOrgan : XRGrabInteractable
+    public class VRGrabbableOrgan : XRSimpleInteractable
     {
         [Header("Anatomical Socket & Snapping")]
         public Transform anatomicalSocket;
@@ -49,15 +55,11 @@ namespace ImmersiveAnatomy.VR
             originalLocalRot = transform.localRotation;
             originalLocalScale = transform.localScale;
 
-            // Configure Rigidbody for smooth 6-DOF VR Grabbing
+            // Strict no-grabbing compliance: Rigidbody is permanently kinematic and non-dynamic
             organRigidbody.useGravity = false;
             organRigidbody.isKinematic = true;
-            organRigidbody.interpolation = RigidbodyInterpolation.Interpolate;
-            organRigidbody.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-
-            // Configure XRI grab settings
-            movementType = MovementType.VelocityTracking;
-            throwOnDetach = false; // Zero loss - medical organs float rather than throwing across the room
+            organRigidbody.interpolation = RigidbodyInterpolation.None;
+            organRigidbody.collisionDetectionMode = CollisionDetectionMode.Discrete;
 
             // Cache renderers and materials for hover effects
             renderers = GetComponentsInChildren<Renderer>();
@@ -71,60 +73,9 @@ namespace ImmersiveAnatomy.VR
             }
         }
 
-        private void Update()
-        {
-            if (isReturning) return;
-
-            // When organ is actively being held, continuously check proximity to comparison pillars for auto-snap!
-            if (isSelected)
-            {
-                CheckHeldProximitySnap();
-            }
-        }
-
-        private void CheckHeldProximitySnap()
-        {
-            Transform leftPed = OrganComparisonController.Instance != null ? OrganComparisonController.Instance.leftPedestal : (VRComparisonBay.Instance != null ? VRComparisonBay.Instance.leftPedestalMount : null);
-            Transform rightPed = OrganComparisonController.Instance != null ? OrganComparisonController.Instance.rightPedestal : (VRComparisonBay.Instance != null ? VRComparisonBay.Instance.rightPedestalMount : null);
-
-            float snapDist = 0.95f;
-
-            if (leftPed != null && Vector3.Distance(transform.position, leftPed.position) < snapDist)
-            {
-                ForceReleaseGrab();
-                if (OrganComparisonController.Instance != null)
-                {
-                    OrganComparisonController.Instance.SnapOrganToPedestalA(organData);
-                }
-                else if (VRComparisonBay.Instance != null)
-                {
-                    transform.position = new Vector3(leftPed.position.x, 1.35f, leftPed.position.z);
-                    organRigidbody.linearVelocity = Vector3.zero;
-                    organRigidbody.angularVelocity = Vector3.zero;
-                    organRigidbody.isKinematic = true;
-                    VRComparisonBay.Instance.PlaceOrganOnPedestal(organData, this, true);
-                }
-            }
-            else if (rightPed != null && Vector3.Distance(transform.position, rightPed.position) < snapDist)
-            {
-                ForceReleaseGrab();
-                if (OrganComparisonController.Instance != null)
-                {
-                    OrganComparisonController.Instance.SnapOrganToPedestalB(organData);
-                }
-                else if (VRComparisonBay.Instance != null)
-                {
-                    transform.position = new Vector3(rightPed.position.x, 1.35f, rightPed.position.z);
-                    organRigidbody.linearVelocity = Vector3.zero;
-                    organRigidbody.angularVelocity = Vector3.zero;
-                    organRigidbody.isKinematic = true;
-                    VRComparisonBay.Instance.PlaceOrganOnPedestal(organData, this, false);
-                }
-            }
-        }
-
         public void ForceReleaseGrab()
         {
+            // No-op for non-grab simple interactable; deselect if actively selected
             if (interactionManager != null && isSelected && interactorsSelecting != null)
             {
                 var selectList = new System.Collections.Generic.List<UnityEngine.XR.Interaction.Toolkit.Interactors.IXRSelectInteractor>(interactorsSelecting);
@@ -145,7 +96,8 @@ namespace ImmersiveAnatomy.VR
             isReturning = false;
             StopAllCoroutines();
 
-            organRigidbody.isKinematic = false;
+            // Specimen remains kinematic - zero physics movement
+            organRigidbody.isKinematic = true;
             organRigidbody.useGravity = false;
 
             if (socketGhostIndicator != null) socketGhostIndicator.SetActive(true);
@@ -169,69 +121,19 @@ namespace ImmersiveAnatomy.VR
             {
                 VRClinicalTablet.Instance.OnOrganGrabbed(organData, this);
             }
+
+            // Check if OrganComparisonController wants to snap this selected organ
+            if (OrganComparisonController.Instance != null && OrganComparisonController.Instance.IsInComparisonMode)
+            {
+                OrganComparisonController.Instance.AddOrganToComparison(organData);
+            }
         }
 
         protected override void OnSelectExited(SelectExitEventArgs args)
         {
             base.OnSelectExited(args);
-
-            Vector3 targetSocketWorld = GetSocketWorldPosition();
-            float dist = Vector3.Distance(transform.position, targetSocketWorld);
-
-            if (dist <= snapDistance)
-            {
-                SnapToSocket();
-            }
-            else
-            {
-                // Check Comparison Pedestal A
-                Transform leftPed = OrganComparisonController.Instance != null ? OrganComparisonController.Instance.leftPedestal : (VRComparisonBay.Instance != null ? VRComparisonBay.Instance.leftPedestalMount : null);
-                Transform rightPed = OrganComparisonController.Instance != null ? OrganComparisonController.Instance.rightPedestal : (VRComparisonBay.Instance != null ? VRComparisonBay.Instance.rightPedestalMount : null);
-
-                if (leftPed != null && Vector3.Distance(transform.position, leftPed.position) < 0.75f)
-                {
-                    if (OrganComparisonController.Instance != null)
-                    {
-                        OrganComparisonController.Instance.SnapOrganToPedestalA(organData);
-                    }
-                    else if (VRComparisonBay.Instance != null)
-                    {
-                        transform.position = new Vector3(leftPed.position.x, 1.35f, leftPed.position.z);
-                        organRigidbody.linearVelocity = Vector3.zero;
-                        organRigidbody.angularVelocity = Vector3.zero;
-                        organRigidbody.isKinematic = true;
-                        VRComparisonBay.Instance.PlaceOrganOnPedestal(organData, this, true);
-                    }
-                }
-                else if (rightPed != null && Vector3.Distance(transform.position, rightPed.position) < 0.75f)
-                {
-                    if (OrganComparisonController.Instance != null)
-                    {
-                        OrganComparisonController.Instance.SnapOrganToPedestalB(organData);
-                    }
-                    else if (VRComparisonBay.Instance != null)
-                    {
-                        transform.position = new Vector3(rightPed.position.x, 1.35f, rightPed.position.z);
-                        organRigidbody.linearVelocity = Vector3.zero;
-                        organRigidbody.angularVelocity = Vector3.zero;
-                        organRigidbody.isKinematic = true;
-                        VRComparisonBay.Instance.PlaceOrganOnPedestal(organData, this, false);
-                    }
-                }
-                else if (floatWhenReleased)
-                {
-                    // Float stably in midair for 360-degree surgical examination
-                    organRigidbody.linearVelocity = Vector3.zero;
-                    organRigidbody.angularVelocity = Vector3.zero;
-                    organRigidbody.isKinematic = true;
-                    PlaySound(releaseAudioClip, 0.5f);
-                }
-                else
-                {
-                    organRigidbody.isKinematic = false;
-                    organRigidbody.useGravity = true;
-                }
-            }
+            organRigidbody.isKinematic = true;
+            organRigidbody.useGravity = false;
         }
 
         protected override void OnHoverEntered(HoverEnterEventArgs args)
@@ -355,4 +257,4 @@ namespace ImmersiveAnatomy.VR
         }
     }
 }
-// Phase 6 XR Organ Grab & Socket Snapping Verified
+// Phase Q4 Interaction Architecture: Strict Zero-Grabbing & Deterministic Placement Verified
