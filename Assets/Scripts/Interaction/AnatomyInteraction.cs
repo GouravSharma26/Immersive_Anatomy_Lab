@@ -22,7 +22,10 @@ public class AnatomyInteraction : MonoBehaviour
     [Header("Player Locomotion")]
     public float walkSpeed = 3.0f;
     public float sprintSpeed = 5.5f;
+    public float mouseSensitivity = 2.4f;
     private Transform playerRigTransform;
+    private float cameraPitch = 0f;
+    private Texture2D reticleTexture;
 
     public enum LabArea
     {
@@ -89,7 +92,7 @@ public class AnatomyInteraction : MonoBehaviour
 
         HandleRaycastHover();
 
-        if (Input.GetMouseButtonDown(0))
+        if (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.E) || Input.GetKeyDown(KeyCode.Space))
         {
             HandleSelection();
         }
@@ -129,7 +132,9 @@ public class AnatomyInteraction : MonoBehaviour
     private void HandlePlayerLocomotion()
     {
         if (playerCamera == null) return;
+        if (cameraInspectionController != null && cameraInspectionController.IsFocusMode) return;
 
+        // 1. WASD Translation
         float h = 0f;
         float v = 0f;
 
@@ -161,13 +166,29 @@ public class AnatomyInteraction : MonoBehaviour
             }
         }
 
-        // Smooth camera turning / orbit via Right Mouse Button drag
-        if (Input.GetMouseButton(1))
+        // 2. First-Person Mouse Look (when cursor is hidden or right-clicking)
+        if (!Cursor.visible || Input.GetMouseButton(1))
         {
-            float mouseX = Input.GetAxis("Mouse X") * 2.8f;
-            if (playerRigTransform != null)
+            float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
+            float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
+
+            if (Mathf.Abs(mouseX) > 0.001f)
             {
-                playerRigTransform.Rotate(Vector3.up, mouseX, Space.World);
+                if (playerRigTransform != null)
+                {
+                    playerRigTransform.Rotate(Vector3.up, mouseX, Space.World);
+                }
+                else
+                {
+                    playerCamera.transform.Rotate(Vector3.up, mouseX, Space.World);
+                }
+            }
+
+            if (Mathf.Abs(mouseY) > 0.001f)
+            {
+                cameraPitch -= mouseY;
+                cameraPitch = Mathf.Clamp(cameraPitch, -80f, 80f);
+                playerCamera.transform.localEulerAngles = new Vector3(cameraPitch, playerCamera.transform.localEulerAngles.y, 0f);
             }
         }
     }
@@ -201,24 +222,29 @@ public class AnatomyInteraction : MonoBehaviour
         if (playerCamera == null) playerCamera = Camera.main;
         if (playerCamera == null) return;
 
-        Vector2 mousePos = Input.mousePosition;
-        // Check if mouse is hovering over docked UI panels (left, right, top tabs, bottom bar)
-        bool overLeftUI = mousePos.x < 380 && mousePos.y > 55 && mousePos.y < Screen.height - 55;
-        bool overRightUI = mousePos.x > Screen.width - 380 && mousePos.y > 55 && mousePos.y < Screen.height - 55;
-        bool overTopTabs = mousePos.y >= Screen.height - 55;
-        bool overBottomBar = mousePos.y <= 55;
-
         Ray ray;
-        // If mouse is within main central 3D viewport, raycast directly from mouse cursor!
-        if (!overLeftUI && !overRightUI && !overTopTabs && !overBottomBar &&
-            mousePos.x >= 0 && mousePos.x <= Screen.width && mousePos.y >= 0 && mousePos.y <= Screen.height)
+        // When cursor is hidden (FPS / Reticle Mode), line of sight is ALWAYS the exact center dot!
+        if (!Cursor.visible)
         {
-            ray = playerCamera.ScreenPointToRay(mousePos);
+            ray = playerCamera.ScreenPointToRay(new Vector3(Screen.width / 2f, Screen.height / 2f, 0));
         }
         else
         {
-            // Center crosshair fallback
-            ray = playerCamera.ScreenPointToRay(new Vector3(Screen.width / 2f, Screen.height / 2f, 0));
+            Vector2 mousePos = Input.mousePosition;
+            bool overLeftUI = mousePos.x < 380 && mousePos.y > 55 && mousePos.y < Screen.height - 55;
+            bool overRightUI = mousePos.x > Screen.width - 380 && mousePos.y > 55 && mousePos.y < Screen.height - 55;
+            bool overTopTabs = mousePos.y >= Screen.height - 55;
+            bool overBottomBar = mousePos.y <= 55;
+
+            if (!overLeftUI && !overRightUI && !overTopTabs && !overBottomBar &&
+                mousePos.x >= 0 && mousePos.x <= Screen.width && mousePos.y >= 0 && mousePos.y <= Screen.height)
+            {
+                ray = playerCamera.ScreenPointToRay(mousePos);
+            }
+            else
+            {
+                ray = playerCamera.ScreenPointToRay(new Vector3(Screen.width / 2f, Screen.height / 2f, 0));
+            }
         }
 
         RaycastHit[] hits = Physics.RaycastAll(ray, interactionDistance);
@@ -252,24 +278,30 @@ public class AnatomyInteraction : MonoBehaviour
 
     private void HandleSelection()
     {
-        Vector2 mousePos = Input.mousePosition;
-        // Don't select if clicking on docked UI panels
-        if (mousePos.x < 380 && mousePos.y > 55 && mousePos.y < Screen.height - 55) return;
-        if (mousePos.x > Screen.width - 380 && mousePos.y > 55 && mousePos.y < Screen.height - 55) return;
-        if (mousePos.y >= Screen.height - 55 || mousePos.y <= 55) return;
+        if (playerCamera == null) return;
 
-        // Check if clicking directly on a comparison pedestal
-        if (playerCamera != null)
+        Ray ray;
+        if (!Cursor.visible)
         {
-            Ray ray = playerCamera.ScreenPointToRay(mousePos);
-            if (Physics.Raycast(ray, out RaycastHit hit, interactionDistance))
+            ray = playerCamera.ScreenPointToRay(new Vector3(Screen.width / 2f, Screen.height / 2f, 0));
+        }
+        else
+        {
+            Vector2 mousePos = Input.mousePosition;
+            if (mousePos.x < 380 && mousePos.y > 55 && mousePos.y < Screen.height - 55) return;
+            if (mousePos.x > Screen.width - 380 && mousePos.y > 55 && mousePos.y < Screen.height - 55) return;
+            if (mousePos.y >= Screen.height - 55 || mousePos.y <= 55) return;
+            ray = playerCamera.ScreenPointToRay(mousePos);
+        }
+
+        // Check if aiming at comparison pedestal trigger
+        if (Physics.Raycast(ray, out RaycastHit hit, interactionDistance))
+        {
+            var pedTrigger = hit.collider.GetComponentInParent<ComparisonPedestalTrigger>();
+            if (pedTrigger != null)
             {
-                var pedTrigger = hit.collider.GetComponentInParent<ComparisonPedestalTrigger>();
-                if (pedTrigger != null)
-                {
-                    pedTrigger.OnPedestalClicked();
-                    return;
-                }
+                pedTrigger.OnPedestalClicked();
+                return;
             }
         }
 
@@ -425,8 +457,85 @@ public class AnatomyInteraction : MonoBehaviour
         if (highlighter != null) highlighter.ClearSelection();
     }
 
+    private void DrawCenterReticle()
+    {
+        if (playerCamera == null) return;
+
+        float centerX = Screen.width / 2f;
+        float centerY = Screen.height / 2f;
+
+        if (reticleTexture == null)
+        {
+            reticleTexture = new Texture2D(1, 1);
+            reticleTexture.SetPixel(0, 0, Color.white);
+            reticleTexture.Apply();
+        }
+
+        bool hasTarget = hoveredOrgan != null;
+
+        if (hasTarget)
+        {
+            // TARGET LOCK-ON: Emerald / Neon Cyan Active Crosshair Reticle
+            Color activeColor = new Color(0f, 1f, 0.72f, 0.95f);
+            GUI.color = activeColor;
+
+            // Center solid pip
+            float pipSize = 6f;
+            GUI.DrawTexture(new Rect(centerX - pipSize / 2f, centerY - pipSize / 2f, pipSize, pipSize), reticleTexture);
+
+            // 4 Targeting corner brackets
+            float bracketDist = 14f;
+            float bracketThick = 2f;
+            float bracketLen = 8f;
+
+            // Top
+            GUI.DrawTexture(new Rect(centerX - bracketLen / 2f, centerY - bracketDist - bracketThick, bracketLen, bracketThick), reticleTexture);
+            // Bottom
+            GUI.DrawTexture(new Rect(centerX - bracketLen / 2f, centerY + bracketDist, bracketLen, bracketThick), reticleTexture);
+            // Left
+            GUI.DrawTexture(new Rect(centerX - bracketDist - bracketThick, centerY - bracketLen / 2f, bracketThick, bracketLen), reticleTexture);
+            // Right
+            GUI.DrawTexture(new Rect(centerX + bracketDist, centerY - bracketLen / 2f, bracketThick, bracketLen), reticleTexture);
+
+            // Reticle Data HUD Tag
+            float tagW = 240f;
+            GUI.color = Color.white;
+            GUI.Label(new Rect(centerX - tagW / 2f, centerY + 18f, tagW, 20f),
+                $"<b><color=#00FFAA>{hoveredOrgan.organName.ToUpper()}</color></b>",
+                new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 13, fontStyle = FontStyle.Bold });
+
+            GUI.Label(new Rect(centerX - tagW / 2f, centerY + 36f, tagW, 16f),
+                $"<size=11><color=#E0E0E0>{hoveredOrgan.bodySystem} System • {hoveredOrgan.normalWeight:F0}g</color></size>",
+                new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter });
+
+            GUI.Label(new Rect(centerX - tagW / 2f, centerY + 52f, tagW, 16f),
+                "<size=10><color=#00E5FF>➔ Left-Click / Press [E] to Select</color></size>",
+                new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold });
+        }
+        else
+        {
+            // IDLE RETICLE: Crisp central targeting dot with 4 subtle outer tick pips
+            GUI.color = new Color(1f, 1f, 1f, 0.85f);
+            float dotSize = 5f;
+            GUI.DrawTexture(new Rect(centerX - dotSize / 2f, centerY - dotSize / 2f, dotSize, dotSize), reticleTexture);
+
+            GUI.color = new Color(0.3f, 0.85f, 1f, 0.45f);
+            float tickDist = 12f;
+            float tickSize = 2f;
+            GUI.DrawTexture(new Rect(centerX - tickSize / 2f, centerY - tickDist, tickSize, tickSize), reticleTexture);
+            GUI.DrawTexture(new Rect(centerX - tickSize / 2f, centerY + tickDist, tickSize, tickSize), reticleTexture);
+            GUI.DrawTexture(new Rect(centerX - tickDist, centerY - tickSize / 2f, tickSize, tickSize), reticleTexture);
+            GUI.DrawTexture(new Rect(centerX + tickDist, centerY - tickSize / 2f, tickSize, tickSize), reticleTexture);
+        }
+
+        GUI.color = Color.white;
+    }
+
     private void OnGUI()
     {
+        // 0. FIRST-PERSON CENTER TARGETING RETICLE (Always drawn where you are looking)
+        DrawCenterReticle();
+
         if (!showDesktopHUD) return;
 
         // 1. TOP HEADER BANNER WITH DEDICATED AREA TABS
