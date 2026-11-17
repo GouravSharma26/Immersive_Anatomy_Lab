@@ -26,7 +26,7 @@ namespace ImmersiveAnatomy.Learning
         private OrganInteractable lastSelectedOrgan;
         private Vector2 scrollPos;
         private Texture2D bgTexture;
-        private string customQuestionText = "Why does myocardial ischemia radiate to the left arm?";
+        public string customQuestionText = "Why does myocardial ischemia radiate to the left arm?";
         private string aiChatResponseText = "";
         private string[] aiCitations = new string[0];
         private string aiPearl = "";
@@ -326,12 +326,21 @@ namespace ImmersiveAnatomy.Learning
             string sourceStr = aiCitations.Length > 0 ? string.Join(" | ", aiCitations) : "Gray's Anatomy & Guyton-Hall";
             GUI.Label(new Rect(r.x, rowY, r.width - 110, 26), $"<size=9><b>Source:</b> {sourceStr}</size>");
 
-            // Audio / TTS Listen Button
-            if (GUI.Button(new Rect(r.x + r.width - 105, rowY, 105, 24), "🔊 Listen [TTS]"))
+            // Audio / TTS Listen / Stop Button
+            bool isAudioPlaying = llmClient != null && llmClient.IsAudioPlaying();
+            string ttsLabel = isAudioPlaying ? "<b><color=#FF4444>⏹ Stop [TTS]</color></b>" : "<b><color=#00FFAA>🔊 Listen [TTS]</color></b>";
+            if (GUI.Button(new Rect(r.x + r.width - 110, rowY, 110, 24), ttsLabel))
             {
                 if (llmClient != null)
                 {
-                    llmClient.PlayLatestAudio();
+                    if (isAudioPlaying)
+                    {
+                        llmClient.StopAudio();
+                    }
+                    else
+                    {
+                        llmClient.PlayLatestAudio();
+                    }
                 }
             }
 
@@ -374,7 +383,7 @@ namespace ImmersiveAnatomy.Learning
             GUI.Label(new Rect(r.x, inputY + 26, r.width, 22), "<size=8><color=#888888>DISCLAIMER: Educational medical simulation only.</color></size>");
         }
 
-        private void SubmitChatQuestion(string organName, string bodySystem)
+        public void SubmitChatQuestion(string organName, string bodySystem)
         {
             if (string.IsNullOrWhiteSpace(customQuestionText)) return;
             string lvl = aiTutor != null ? aiTutor.pedagogicalLevel.ToString() : "Student";

@@ -42,6 +42,20 @@ namespace ImmersiveAnatomy.VR
         private string currentOrganName = "Lungs & Trachea";
         private string currentSystemName = "Respiratory";
         private string latestAudioUrl = "";
+        private bool isSpeakingVoice = false;
+
+        private void Update()
+        {
+            // Auto-revert voice button to green once speech playback finishes
+            if (isSpeakingVoice)
+            {
+                bool isPlaying = (llmClient != null && llmClient.IsAudioPlaying()) || (audioSource != null && audioSource.isPlaying);
+                if (!isPlaying)
+                {
+                    SetVoiceButtonState(false);
+                }
+            }
+        }
 
         private void Awake()
         {
@@ -266,21 +280,54 @@ namespace ImmersiveAnatomy.VR
             if (listenTTSBtn != null)
             {
                 listenTTSBtn.gameObject.SetActive(true);
-                if (listenTTSBtnText != null) listenTTSBtnText.text = "🔊 Listen to Spoken Explanation";
+                SetVoiceButtonState(false);
             }
+        }
+
+        public void SetVoiceButtonState(bool isPlaying)
+        {
+            isSpeakingVoice = isPlaying;
+            if (listenTTSBtn == null) return;
+
+            var colors = listenTTSBtn.colors;
+            if (isPlaying)
+            {
+                // RED Stop state
+                colors.normalColor = new Color(0.78f, 0.16f, 0.16f, 1f);
+                colors.highlightedColor = new Color(0.92f, 0.25f, 0.25f, 1f);
+                if (listenTTSBtnText != null) listenTTSBtnText.text = "⏹ Stop Spoken Voice";
+            }
+            else
+            {
+                // GREEN Start state
+                colors.normalColor = new Color(0.12f, 0.55f, 0.35f, 1f);
+                colors.highlightedColor = new Color(0.18f, 0.70f, 0.45f, 1f);
+                if (listenTTSBtnText != null) listenTTSBtnText.text = "🔊 Listen to Spoken Voice";
+            }
+            listenTTSBtn.colors = colors;
         }
 
         private void OnListenTTSClicked()
         {
-            if (llmClient != null && !string.IsNullOrEmpty(latestAudioUrl))
+            if (isSpeakingVoice)
             {
-                if (listenTTSBtnText != null) listenTTSBtnText.text = "🔊 Playing Spoken Voice...";
-                llmClient.PlayLatestAudio();
+                // Stop voice playback immediately
+                if (llmClient != null) llmClient.StopAudio();
+                if (audioSource != null && audioSource.isPlaying) audioSource.Stop();
+                SetVoiceButtonState(false);
             }
             else
             {
-                PlaySound(receiveClip, 1f);
-                if (listenTTSBtnText != null) listenTTSBtnText.text = "Voice Played";
+                // Start voice playback and toggle to RED
+                SetVoiceButtonState(true);
+                if (llmClient != null && !string.IsNullOrEmpty(latestAudioUrl))
+                {
+                    llmClient.PlayLatestAudio();
+                }
+                else
+                {
+                    PlaySound(receiveClip, 1f);
+                }
             }
         }
 

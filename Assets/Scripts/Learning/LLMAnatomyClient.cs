@@ -114,6 +114,19 @@ namespace ImmersiveAnatomy.Learning
             }
         }
 
+        public bool IsAudioPlaying()
+        {
+            return audioSource != null && audioSource.isPlaying;
+        }
+
+        public void StopAudio()
+        {
+            if (audioSource != null && audioSource.isPlaying)
+            {
+                audioSource.Stop();
+            }
+        }
+
         public void PlayLatestAudio()
         {
             if (latestResponse != null && !string.IsNullOrEmpty(latestResponse.audio_url))

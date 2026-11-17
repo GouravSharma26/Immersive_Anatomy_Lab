@@ -96,6 +96,8 @@ public class AnatomyInteraction : MonoBehaviour
     }
 
     public Button hoveredWorldButton = null;
+    public bool isTypingTutorQuestion = false;
+    private string tutorInputQuery = "";
 
     private Button FindHoveredWorldButton(Vector2 screenPoint)
     {
@@ -140,21 +142,50 @@ public class AnatomyInteraction : MonoBehaviour
     public void SetVRHandsVisible(bool isVisible)
     {
         showVRHands = isVisible;
-        string[] controllerNames = new string[] { "Left Controller", "Right Controller", "XR Controller Left", "XR Controller Right", "Left Controller Visual", "Right Controller Visual" };
-        foreach (var name in controllerNames)
+        ApplyVRHandsVisibility(isVisible);
+    }
+
+    private void ApplyVRHandsVisibility(bool isVisible)
+    {
+        // 1. Deactivate / Activate Left & Right Controller hierarchies directly under XR Origin
+        GameObject xrRig = GameObject.Find("XR Origin (XR Rig)") ?? GameObject.Find("XR Origin (VR)");
+        if (xrRig != null)
         {
-            var go = GameObject.Find(name);
-            if (go != null)
+            Transform camOffset = xrRig.transform.Find("Camera Offset");
+            if (camOffset != null)
             {
-                foreach (var r in go.GetComponentsInChildren<Renderer>(true))
-                {
-                    r.enabled = isVisible;
-                }
-                foreach (var lr in go.GetComponentsInChildren<LineRenderer>(true))
-                {
-                    lr.enabled = isVisible;
-                }
+                Transform leftC = camOffset.Find("Left Controller");
+                if (leftC != null) leftC.gameObject.SetActive(isVisible);
+
+                Transform rightC = camOffset.Find("Right Controller");
+                if (rightC != null) rightC.gameObject.SetActive(isVisible);
             }
+        }
+
+        // 2. Global search for any remaining UniversalController models, buttons or line renderers
+        foreach (var r in FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+        {
+            if (r == null) continue;
+            string n = r.name;
+            if (n.Contains("UniversalController") || n.Contains("Controller_Base") || n.Contains("XR Controller") || n.Contains("ThumbStick") || n.Contains("Bumper") || n.Contains("Trigger") || n.Contains("TouchPad"))
+            {
+                r.enabled = isVisible;
+            }
+        }
+
+        foreach (var lr in FindObjectsByType<LineRenderer>(FindObjectsSortMode.None))
+        {
+            if (lr == null) continue;
+            lr.enabled = isVisible;
+        }
+    }
+
+    private void LateUpdate()
+    {
+        // Ensure controllers remain completely hidden each frame when showVRHands is false
+        if (!showVRHands)
+        {
+            ApplyVRHandsVisibility(false);
         }
     }
 
@@ -166,12 +197,47 @@ public class AnatomyInteraction : MonoBehaviour
 
     private void Update()
     {
+        // Shortcut to ask Dr. Nova AI: works only when in the Dr. Nova AI tutor section circle!
+        bool inTutorZone = (currentArea == LabArea.AITutor);
+        if (inTutorZone)
+        {
+            if (!isTypingTutorQuestion)
+            {
+                if (Input.GetKeyDown(KeyCode.T) || Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || Input.GetKeyDown(KeyCode.Slash))
+                {
+                    isTypingTutorQuestion = true;
+                    tutorInputQuery = "";
+                    SetCursorVisible(true);
+                }
+            }
+            else
+            {
+                if (Input.GetKeyDown(KeyCode.Escape))
+                {
+                    isTypingTutorQuestion = false;
+                    SetCursorVisible(false);
+                }
+                else if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
+                {
+                    SubmitTutorQuestion();
+                }
+            }
+        }
+        else if (isTypingTutorQuestion)
+        {
+            isTypingTutorQuestion = false;
+            SetCursorVisible(false);
+        }
+
         HandlePlayerLocomotion();
 
         // Toggle mouse cursor visibility with Escape, Tilde (~), or M
         if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.BackQuote) || Input.GetKeyDown(KeyCode.M))
         {
-            SetCursorVisible(!Cursor.visible);
+            if (!isTypingTutorQuestion)
+            {
+                SetCursorVisible(!Cursor.visible);
+            }
         }
 
         // Toggle simulated VR hands with V
@@ -190,7 +256,10 @@ public class AnatomyInteraction : MonoBehaviour
 
         if (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.E) || Input.GetKeyDown(KeyCode.Space))
         {
-            HandleSelection();
+            if (!isTypingTutorQuestion)
+            {
+                HandleSelection();
+            }
         }
 
         HandleKeyboardShortcuts();
@@ -228,6 +297,7 @@ public class AnatomyInteraction : MonoBehaviour
     private void HandlePlayerLocomotion()
     {
         if (playerCamera == null) return;
+        if (isTypingTutorQuestion) return;
         if (cameraInspectionController != null && cameraInspectionController.IsFocusMode) return;
 
         // 1. WASD Translation
@@ -454,16 +524,37 @@ public class AnatomyInteraction : MonoBehaviour
         }
     }
 
+    private void SubmitTutorQuestion()
+    {
+        if (!string.IsNullOrWhiteSpace(tutorInputQuery))
+        {
+            string organ = selectedOrgan != null ? selectedOrgan.organName : "Heart";
+            string system = selectedOrgan != null ? selectedOrgan.bodySystem : "Cardiovascular";
+
+            if (ImmersiveAnatomy.VR.VRAINovaPod.Instance != null)
+            {
+                ImmersiveAnatomy.VR.VRAINovaPod.Instance.AskQuestion(tutorInputQuery, organ, system);
+            }
+            if (learningUI != null)
+            {
+                learningUI.customQuestionText = tutorInputQuery;
+                learningUI.SubmitChatQuestion(organ, system);
+            }
+            PlaySelectTone(950f, 0.15f);
+        }
+        tutorInputQuery = "";
+        isTypingTutorQuestion = false;
+        SetCursorVisible(false);
+    }
+
     private void HandleKeyboardShortcuts()
     {
+        if (isTypingTutorQuestion) return;
+
         // Quick Area Switch: L key toggles between Exploration and Quiz
         if (Input.GetKeyDown(KeyCode.L))
         {
             currentArea = (currentArea == LabArea.Quiz) ? LabArea.Exploration : LabArea.Quiz;
-            if (currentArea == LabArea.Quiz && learningUI != null && learningUI.quizEngine != null && learningUI.quizEngine.State == ImmersiveAnatomy.Learning.QuizState.Idle)
-            {
-                learningUI.quizEngine.StartQuizSession(5);
-            }
         }
         // 1-6 Body System visibility
         if (BodySystemManager.Instance != null)
@@ -1031,11 +1122,43 @@ public class AnatomyInteraction : MonoBehaviour
             }
         }
 
+        // 5.5. INTERACTIVE DR. NOVA AI QUESTION MODAL (Tutor Area Shortcut)
+        if (isTypingTutorQuestion)
+        {
+            float boxW = 660f;
+            float boxH = 155f;
+            float boxX = (Screen.width - boxW) * 0.5f;
+            float boxY = Screen.height - 215f;
+
+            GUI.Box(new Rect(boxX, boxY, boxW, boxH), "");
+            GUI.Label(new Rect(boxX + 15, boxY + 10, boxW - 30, 24),
+                "<b><color=#00FFAA>💬 ASK DR. NOVA (AI CLINICAL TUTOR)</color></b>",
+                new GUIStyle(GUI.skin.label) { fontSize = 14, fontStyle = FontStyle.Bold });
+
+            GUI.Label(new Rect(boxX + 15, boxY + 34, boxW - 30, 18),
+                "<size=11><color=#E0E0E0>Type your clinical or anatomical inquiry below and press <b>[Enter]</b> to ask Dr. Nova:</color></size>");
+
+            GUI.SetNextControlName("TutorInputField");
+            tutorInputQuery = GUI.TextField(new Rect(boxX + 15, boxY + 56, boxW - 30, 34), tutorInputQuery, 250);
+            GUI.FocusControl("TutorInputField");
+
+            if (GUI.Button(new Rect(boxX + 15, boxY + 100, 200, 34), "<b>Ask Dr. Nova [Enter]</b>"))
+            {
+                SubmitTutorQuestion();
+            }
+            if (GUI.Button(new Rect(boxX + 225, boxY + 100, 120, 34), "Cancel [Esc]"))
+            {
+                isTypingTutorQuestion = false;
+                SetCursorVisible(false);
+            }
+        }
+
         // 6. BOTTOM CONTROLS QUICK BAR
         GUI.Box(new Rect(15, Screen.height - 45, Screen.width - 30, 32), "");
         string cursorStatus = Cursor.visible ? "<color=#FFCC00>Visible</color>" : "<color=#00FFAA>Hidden</color>";
         string handsStatus = showVRHands ? "<color=#00FFAA>ON</color>" : "<color=#888888>OFF</color>";
-        string hint = $"<b>Controls:</b> WASD Move | Mouse Look | Left-Click Select / Snap | Q/E Rotate | F Focus | C Compare | <b>Panels [H]</b> | <b>VR Hands: {handsStatus} [V]</b> | <b>Cursor [{cursorStatus} - Esc]</b>";
+        string tutorHint = (currentArea == LabArea.AITutor) ? " | <color=#00FFAA><b>[T] / [Enter] Ask Dr. Nova AI</b></color>" : "";
+        string hint = $"<b>Controls:</b> WASD Move | Mouse Look | Left-Click Select / Snap | Q/E Rotate | F Focus | C Compare | <b>Panels [H]</b> | <b>VR Hands: {handsStatus} [V]</b> | <b>Cursor [{cursorStatus} - Esc]</b>{tutorHint}";
         GUI.Label(new Rect(25, Screen.height - 39, Screen.width - 50, 24), hint);
     }
 }
