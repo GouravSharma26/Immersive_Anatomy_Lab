@@ -604,6 +604,20 @@ public class AnatomyInteraction : MonoBehaviour
             if (xrayViewController != null) xrayViewController.ToggleXRay();
         }
 
+        // Advanced Medical Visualization: 8 (Vascular), 9 (Thoracic), 0 (Reset)
+        if (Input.GetKeyDown(KeyCode.Alpha8))
+        {
+            if (xrayViewController != null) xrayViewController.ToggleVascularMode();
+        }
+        if (Input.GetKeyDown(KeyCode.Alpha9))
+        {
+            if (xrayViewController != null) xrayViewController.ToggleThoracicMode();
+        }
+        if (Input.GetKeyDown(KeyCode.Alpha0))
+        {
+            if (xrayViewController != null) xrayViewController.ResetToNormal();
+        }
+
         // Comparison Mode: C
         if (Input.GetKeyDown(KeyCode.C))
         {
@@ -667,9 +681,9 @@ public class AnatomyInteraction : MonoBehaviour
         {
             explodedViewController.ResetExplosion();
         }
-        if (xrayViewController != null && xrayViewController.IsXRayActive)
+        if (xrayViewController != null)
         {
-            xrayViewController.SetXRayActive(false);
+            xrayViewController.ResetToNormal();
         }
         if (BodySystemManager.Instance != null)
         {
@@ -848,8 +862,24 @@ public class AnatomyInteraction : MonoBehaviour
             modeStatus = "<color=#FFCC00>ORGAN ISOLATED</color>";
         else if (comparisonController != null && comparisonController.IsInComparisonMode)
             modeStatus = "<color=#CC44FF>ORGAN COMPARISON</color>";
-        else if (xrayViewController != null && xrayViewController.IsXRayActive)
-            modeStatus = "<color=#00FFFF>X-RAY FLUOROSCOPY</color>";
+        else if (xrayViewController != null && xrayViewController.CurrentMode != XRayViewController.MedicalVisualizationMode.Normal)
+        {
+            switch (xrayViewController.CurrentMode)
+            {
+                case XRayViewController.MedicalVisualizationMode.XRay:
+                    modeStatus = "<color=#00FFFF>RADIOGRAPHIC X-RAY</color>";
+                    break;
+                case XRayViewController.MedicalVisualizationMode.Vascular:
+                    modeStatus = "<color=#FF3366>VASCULAR ANGIOGRAM</color>";
+                    break;
+                case XRayViewController.MedicalVisualizationMode.ThoracicTranslucent:
+                    modeStatus = "<color=#66CCFF>TRANSLUCENT THORACIC</color>";
+                    break;
+                case XRayViewController.MedicalVisualizationMode.FluoroscopySweep:
+                    modeStatus = "<color=#00FFCC>FLUOROSCOPY SWEEP</color>";
+                    break;
+            }
+        }
 
         GUI.Label(new Rect(Screen.width - 240, 22, 220, 24), $"<b>ACTIVE:</b> {modeStatus}");
 
@@ -899,21 +929,35 @@ public class AnatomyInteraction : MonoBehaviour
                 if (explodedViewController != null) explodedViewController.ToggleExplodedView();
             }
 
-            bool isXRay = xrayViewController != null && xrayViewController.IsXRayActive;
+            bool isXRay = xrayViewController != null && xrayViewController.CurrentMode == XRayViewController.MedicalVisualizationMode.XRay;
             string xrayText = isXRay ? "Disable X-Ray [Z]" : "X-Ray Mode [Z]";
             if (GUI.Button(new Rect(25, viewY + 52, leftW - 20, 25), xrayText))
             {
                 if (xrayViewController != null) xrayViewController.ToggleXRay();
             }
 
+            bool isVasc = xrayViewController != null && xrayViewController.CurrentMode == XRayViewController.MedicalVisualizationMode.Vascular;
+            string vascText = isVasc ? "Exit Vascular [8]" : "Vascular Angiogram [8]";
+            if (GUI.Button(new Rect(25, viewY + 80, leftW - 20, 25), vascText))
+            {
+                if (xrayViewController != null) xrayViewController.ToggleVascularMode();
+            }
+
+            bool isThor = xrayViewController != null && xrayViewController.CurrentMode == XRayViewController.MedicalVisualizationMode.ThoracicTranslucent;
+            string thorText = isThor ? "Exit Thoracic Glass [9]" : "Thoracic Silhouette [9]";
+            if (GUI.Button(new Rect(25, viewY + 108, leftW - 20, 25), thorText))
+            {
+                if (xrayViewController != null) xrayViewController.ToggleThoracicMode();
+            }
+
             bool isComp = comparisonController != null && comparisonController.IsInComparisonMode;
             string compText = isComp ? "Exit Comparison [C]" : "Compare Organs [C]";
-            if (GUI.Button(new Rect(25, viewY + 80, leftW - 20, 25), compText))
+            if (GUI.Button(new Rect(25, viewY + 136, leftW - 20, 25), compText))
             {
                 if (comparisonController != null) comparisonController.ToggleComparisonMode(selectedOrgan);
             }
 
-            if (GUI.Button(new Rect(25, viewY + 108, leftW - 20, 25), "RESET ANATOMY [R]"))
+            if (GUI.Button(new Rect(25, viewY + 164, leftW - 20, 25), "RESET ANATOMY [R]"))
             {
                 ResetAllAnatomy();
             }
