@@ -28,6 +28,24 @@ namespace ImmersiveAnatomy.VR
             if (audioSource == null) audioSource = GetComponent<AudioSource>();
             if (audioSource == null) audioSource = gameObject.AddComponent<AudioSource>();
             audioSource.playOnAwake = false;
+
+            // Ensure floor pads are clearly spaced out at their dedicated stations away from the central table
+            if (zoneType == LabZoneType.Quiz && transform.position.x > -4f)
+            {
+                transform.position = new Vector3(-4.6f, 0f, 1.4f);
+            }
+            else if (zoneType == LabZoneType.TeachingAI && transform.position.x < 4f)
+            {
+                transform.position = new Vector3(4.6f, 0f, 1.4f);
+            }
+            else if (zoneType == LabZoneType.Comparison && transform.position.z > -5f)
+            {
+                transform.position = new Vector3(0f, 0f, -5.0f);
+            }
+            else if (zoneType == LabZoneType.Dissection)
+            {
+                transform.position = new Vector3(0f, 0f, 0.2f);
+            }
         }
 
         private void OnTriggerEnter(Collider other)
@@ -54,13 +72,7 @@ namespace ImmersiveAnatomy.VR
 
                 case LabZoneType.Quiz:
                     interaction.currentArea = AnatomyInteraction.LabArea.Quiz;
-                    if (interaction.learningUI != null && interaction.learningUI.quizEngine != null)
-                    {
-                        if (interaction.learningUI.quizEngine.State == ImmersiveAnatomy.Learning.QuizState.Idle)
-                        {
-                            interaction.learningUI.quizEngine.StartQuizSession(5);
-                        }
-                    }
+                    // Note: Do not auto-start quiz! Let the user press "START QUIZ" when ready.
                     break;
 
                 case LabZoneType.TeachingAI:

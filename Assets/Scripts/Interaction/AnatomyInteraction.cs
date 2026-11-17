@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI;
 
 public class AnatomyInteraction : MonoBehaviour
 {
@@ -75,6 +76,63 @@ public class AnatomyInteraction : MonoBehaviour
 
         // Hide simulated VR controller hands by default in desktop mode for a crystal clean view
         SetVRHandsVisible(false);
+
+        // Ensure EventSystem exists for UI button processing
+        if (FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
+        {
+            var esGO = new GameObject("EventSystem");
+            esGO.AddComponent<UnityEngine.EventSystems.EventSystem>();
+            esGO.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
+        }
+
+        // Connect world camera to all WorldSpace canvases for screen raycasting
+        foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
+        {
+            if (c.renderMode == RenderMode.WorldSpace && c.worldCamera == null)
+            {
+                c.worldCamera = playerCamera != null ? playerCamera : Camera.main;
+            }
+        }
+    }
+
+    public Button hoveredWorldButton = null;
+
+    private Button FindHoveredWorldButton(Vector2 screenPoint)
+    {
+        if (playerCamera == null) playerCamera = Camera.main;
+        if (playerCamera == null) return null;
+
+        Button[] allButtons = FindObjectsByType<Button>(FindObjectsSortMode.None);
+        Button bestBtn = null;
+        float closestDist = float.MaxValue;
+
+        foreach (var btn in allButtons)
+        {
+            if (btn == null || !btn.interactable || !btn.gameObject.activeInHierarchy) continue;
+
+            Canvas c = btn.GetComponentInParent<Canvas>();
+            if (c == null || c.renderMode != RenderMode.WorldSpace) continue;
+
+            RectTransform rt = btn.GetComponent<RectTransform>();
+            if (rt == null) continue;
+
+            float dist = Vector3.Distance(playerCamera.transform.position, rt.position);
+            if (dist > 8.5f) continue;
+
+            Vector3 toBtn = (rt.position - playerCamera.transform.position).normalized;
+            if (Vector3.Dot(playerCamera.transform.forward, toBtn) < 0.15f) continue;
+
+            if (RectTransformUtility.RectangleContainsScreenPoint(rt, screenPoint, playerCamera))
+            {
+                if (dist < closestDist)
+                {
+                    closestDist = dist;
+                    bestBtn = btn;
+                }
+            }
+        }
+
+        return bestBtn;
     }
 
     public bool showVRHands = false;
@@ -285,6 +343,9 @@ public class AnatomyInteraction : MonoBehaviour
             }
         }
 
+        Vector2 aimScreenPos = !Cursor.visible ? new Vector2(Screen.width * 0.5f, Screen.height * 0.5f) : (Vector2)Input.mousePosition;
+        hoveredWorldButton = FindHoveredWorldButton(aimScreenPos);
+
         RaycastHit[] hits = Physics.RaycastAll(ray, interactionDistance);
         OrganInteractable foundOrgan = null;
         float bestDist = float.MaxValue;
@@ -317,6 +378,14 @@ public class AnatomyInteraction : MonoBehaviour
     private void HandleSelection()
     {
         if (playerCamera == null) return;
+
+        // 1. Primary Priority: Interactive Screen Buttons in 3D Space (Quiz Kiosk, AI Pod, Comparison Bay)
+        if (hoveredWorldButton != null && hoveredWorldButton.interactable && hoveredWorldButton.gameObject.activeInHierarchy)
+        {
+            PlaySelectTone(1050f, 0.08f);
+            hoveredWorldButton.onClick.Invoke();
+            return;
+        }
 
         Ray ray;
         if (!Cursor.visible)
@@ -511,7 +580,39 @@ public class AnatomyInteraction : MonoBehaviour
 
         bool hasTarget = hoveredOrgan != null;
 
-        if (hasTarget)
+        if (hoveredWorldButton != null)
+        {
+            // BUTTON TARGET LOCK-ON: Glowing Neon Cyan Reticle
+            Color activeColor = new Color(0f, 1f, 0.85f, 0.95f);
+            GUI.color = activeColor;
+
+            float pipSize = 7f;
+            GUI.DrawTexture(new Rect(centerX - pipSize / 2f, centerY - pipSize / 2f, pipSize, pipSize), reticleTexture);
+
+            float bracketDist = 16f;
+            float bracketThick = 2.5f;
+            float bracketLen = 10f;
+
+            GUI.DrawTexture(new Rect(centerX - bracketLen / 2f, centerY - bracketDist - bracketThick, bracketLen, bracketThick), reticleTexture);
+            GUI.DrawTexture(new Rect(centerX - bracketLen / 2f, centerY + bracketDist, bracketLen, bracketThick), reticleTexture);
+            GUI.DrawTexture(new Rect(centerX - bracketDist - bracketThick, centerY - bracketLen / 2f, bracketThick, bracketLen), reticleTexture);
+            GUI.DrawTexture(new Rect(centerX + bracketDist, centerY - bracketLen / 2f, bracketThick, bracketLen), reticleTexture);
+
+            string btnText = hoveredWorldButton.GetComponentInChildren<Text>()?.text ?? hoveredWorldButton.name;
+            string cleanText = System.Text.RegularExpressions.Regex.Replace(btnText, "<.*?>", string.Empty).Trim();
+            if (cleanText.Length > 42) cleanText = cleanText.Substring(0, 39) + "...";
+
+            float tagW = 340f;
+            GUI.color = Color.white;
+            GUI.Label(new Rect(centerX - tagW / 2f, centerY + 18f, tagW, 20f),
+                $"<b><color=#00FFAA>[ {cleanText} ]</color></b>",
+                new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontSize = 12, fontStyle = FontStyle.Bold });
+
+            GUI.Label(new Rect(centerX - tagW / 2f, centerY + 36f, tagW, 16f),
+                "<size=10><color=#00E5FF>➔ Left-Click / Press [E] to Click Screen</color></size>",
+                new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold });
+        }
+        else if (hasTarget)
         {
             // TARGET LOCK-ON: Emerald / Neon Cyan Active Crosshair Reticle
             Color activeColor = new Color(0f, 1f, 0.72f, 0.95f);
@@ -604,11 +705,7 @@ public class AnatomyInteraction : MonoBehaviour
             if (GUI.Button(new Rect(tabStartX + i * (tabW + 6), 16, tabW, 32), tabLabel))
             {
                 currentArea = (LabArea)i;
-                if (currentArea == LabArea.Quiz && learningUI != null && learningUI.quizEngine != null && learningUI.quizEngine.State == ImmersiveAnatomy.Learning.QuizState.Idle)
-                {
-                    learningUI.quizEngine.StartQuizSession(5);
-                }
-                else if (currentArea == LabArea.ClinicalCases && learningUI != null && learningUI.quizEngine != null)
+                if (currentArea == LabArea.ClinicalCases && learningUI != null && learningUI.quizEngine != null)
                 {
                     learningUI.quizEngine.StartClinicalCase(0);
                 }

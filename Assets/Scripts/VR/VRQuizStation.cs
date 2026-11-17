@@ -85,7 +85,6 @@ namespace ImmersiveAnatomy.VR
 
             if (quizEngine != null)
             {
-                quizEngine.StartQuizSession(10);
                 DisplayCurrentQuizQuestion();
             }
         }
@@ -171,9 +170,31 @@ namespace ImmersiveAnatomy.VR
                 }
             }
 
-            if (quizEngine == null || quizEngine.CurrentQuestion == null)
+            // LANDING SCREEN: When in Idle state or no question active, show clear Start Quiz prompt
+            if (quizEngine == null || quizEngine.State == ImmersiveAnatomy.Learning.QuizState.Idle || quizEngine.CurrentQuestion == null)
             {
-                if (quizQuestionText != null) quizQuestionText.text = "All quiz questions completed! Great work.";
+                if (quizSystemText != null) quizSystemText.text = "<b>CLINICAL ASSESSMENT & QUIZ KIOSK</b>";
+                if (quizQuestionText != null) quizQuestionText.text = "<b>Welcome to the Interactive Anatomy Assessment Kiosk!</b>\n\nTest your clinical recall, vascular supply recognition, and 3D organ identification.\n\nWhen ready, click <b>START ANATOMY QUIZ</b> below to begin.";
+                if (quizHintText != null) quizHintText.text = "<b>Tip:</b> Aim your center crosshair at any option and Left-Click or press [E] to answer.";
+
+                if (optionButtons != null && optionButtons.Length > 0 && optionButtons[0] != null)
+                {
+                    optionButtons[0].gameObject.SetActive(true);
+                    optionButtons[0].interactable = true;
+                    if (optionTexts != null && optionTexts.Length > 0 && optionTexts[0] != null)
+                    {
+                        optionTexts[0].text = "<b>▶ START ANATOMY QUIZ (5 Questions)</b>";
+                    }
+                    var colors = optionButtons[0].colors;
+                    colors.normalColor = new Color(0.12f, 0.48f, 0.32f, 1f);
+                    optionButtons[0].colors = colors;
+                }
+                for (int i = 1; i < optionButtons.Length; i++)
+                {
+                    if (optionButtons[i] != null) optionButtons[i].gameObject.SetActive(false);
+                }
+
+                UpdateHeaderStats();
                 return;
             }
 
@@ -215,7 +236,18 @@ namespace ImmersiveAnatomy.VR
 
         private void OnOptionSelected(int index)
         {
-            if (isQuestionAnswered || quizEngine == null || quizEngine.CurrentQuestion == null) return;
+            if (quizEngine == null) return;
+
+            // If on landing screen, clicking Option 0 starts the quiz session!
+            if (quizEngine.State == ImmersiveAnatomy.Learning.QuizState.Idle)
+            {
+                PlaySound(nextClip, 0.9f);
+                quizEngine.StartQuizSession(5);
+                DisplayCurrentQuizQuestion();
+                return;
+            }
+
+            if (isQuestionAnswered || quizEngine.CurrentQuestion == null) return;
             isQuestionAnswered = true;
 
             QuizQuestion q = quizEngine.CurrentQuestion;
@@ -295,7 +327,14 @@ namespace ImmersiveAnatomy.VR
             PlaySound(nextClip, 0.8f);
             if (quizEngine != null)
             {
-                quizEngine.NextQuestion();
+                if (quizEngine.CurrentQuestionIndex >= quizEngine.TotalQuestionsInSession - 1)
+                {
+                    quizEngine.ExitQuiz();
+                }
+                else
+                {
+                    quizEngine.NextQuestion();
+                }
                 DisplayCurrentQuizQuestion();
             }
         }

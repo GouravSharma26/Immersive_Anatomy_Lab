@@ -632,20 +632,20 @@ public class SetupVRScene
 
     private static void SetupZoneTriggersAndFloorPads()
     {
-        // 1. Quiz Zone Trigger and Floor Pad (X = -3.0, Z = 1.2)
-        EnsureZonePadAndTrigger("Zone_Quiz", new Vector3(-3.0f, 0f, 1.2f), new Vector3(2.5f, 2.5f, 2.5f),
+        // 1. Quiz Zone Trigger and Floor Pad (X = -4.6, Z = 1.4) - Clear of the center table, directly in front of the quiz kiosk
+        EnsureZonePadAndTrigger("Zone_Quiz", new Vector3(-4.6f, 0f, 1.4f), new Vector3(2.0f, 2.5f, 2.0f),
             VRZoneTrigger.LabZoneType.Quiz, "Quiz & Examination Bay", new Color(0.1f, 0.6f, 0.9f, 0.85f));
 
-        // 2. Teaching AI Pod Zone Trigger and Floor Pad (X = +3.0, Z = 1.2)
-        EnsureZonePadAndTrigger("Zone_TeachingAI", new Vector3(3.0f, 0f, 1.2f), new Vector3(2.5f, 2.5f, 2.5f),
+        // 2. Teaching AI Pod Zone Trigger and Floor Pad (X = +4.6, Z = 1.4) - Clear of the center table, directly in front of Dr. Nova
+        EnsureZonePadAndTrigger("Zone_TeachingAI", new Vector3(4.6f, 0f, 1.4f), new Vector3(2.0f, 2.5f, 2.0f),
             VRZoneTrigger.LabZoneType.TeachingAI, "Dr. Nova AI Teaching Pod", new Color(0.1f, 0.85f, 0.5f, 0.85f));
 
-        // 3. Central Dissection Zone Trigger and Floor Pad (X = 0, Z = 0.5)
-        EnsureZonePadAndTrigger("Zone_Dissection", new Vector3(0f, 0f, 0.5f), new Vector3(2.8f, 2.5f, 2.6f),
+        // 3. Central Dissection Zone Trigger and Floor Pad (X = 0, Z = 0.2) - In front of the dissection table
+        EnsureZonePadAndTrigger("Zone_Dissection", new Vector3(0f, 0f, 0.2f), new Vector3(2.0f, 2.5f, 1.6f),
             VRZoneTrigger.LabZoneType.Dissection, "Anatomy Dissection Stage", new Color(0.2f, 0.5f, 0.85f, 0.85f));
 
-        // 4. Comparison Bay Zone Trigger and Floor Pad (X = 0, Z = -4.5)
-        EnsureZonePadAndTrigger("Zone_Comparison", new Vector3(0f, 0f, -4.5f), new Vector3(2.8f, 2.5f, 2.6f),
+        // 4. Comparison Bay Zone Trigger and Floor Pad (X = 0, Z = -5.0) - In front of the rear comparison bay
+        EnsureZonePadAndTrigger("Zone_Comparison", new Vector3(0f, 0f, -5.0f), new Vector3(2.4f, 2.5f, 2.0f),
             VRZoneTrigger.LabZoneType.Comparison, "Organ Comparison Bay", new Color(0.7f, 0.3f, 0.85f, 0.85f));
     }
 
