@@ -229,6 +229,7 @@ namespace ImmersiveAnatomy.Editor
 
             string manifestContent = @"<?xml version=""1.0"" encoding=""utf-8""?>
 <manifest xmlns:android=""http://schemas.android.com/apk/res/android""
+    xmlns:tools=""http://schemas.android.com/tools""
     package=""com.gourav.immersiveanatomylab""
     android:versionCode=""1""
     android:versionName=""1.0.0""
@@ -251,8 +252,11 @@ namespace ImmersiveAnatomy.Editor
         android:usesCleartextTraffic=""true""
         android:theme=""@style/UnityThemeSelector"">
 
-        <!-- Supported Meta Quest Hardware Family -->
-        <meta-data android:name=""com.oculus.supportedDevices"" android:value=""quest|quest2|questpro|quest3"" />
+        <!-- Supported Meta Quest Hardware Family with merger override -->
+        <meta-data 
+            android:name=""com.oculus.supportedDevices"" 
+            android:value=""quest|quest2|questpro|quest3"" 
+            tools:replace=""android:value"" />
         <meta-data android:name=""com.oculus.handtracking.frequency"" android:value=""LOW"" />
 
         <activity
@@ -412,7 +416,7 @@ namespace ImmersiveAnatomy.Editor
             GenerateQuestAndroidManifest();
             ApplySecureAndroidSigning();
 
-            string outputDir = "Builds/Quest";
+            string outputDir = Path.GetFullPath(Path.Combine(Application.dataPath, "../Builds/Quest"));
             if (!Directory.Exists(outputDir)) Directory.CreateDirectory(outputDir);
 
             string apkPath = Path.Combine(outputDir, "ImmersiveAnatomyLab-Quest-v1.0.0.apk");
@@ -440,7 +444,8 @@ namespace ImmersiveAnatomy.Editor
   ""errors"": {report.summary.totalErrors},
   ""warnings"": {report.summary.totalWarnings}
 }}";
-            File.WriteAllText("scratch/quest_build_result.json", reportJson);
+            string resultPath = Path.GetFullPath(Path.Combine(Application.dataPath, "../scratch/quest_build_result.json"));
+            File.WriteAllText(resultPath, reportJson);
 
             if (success)
             {
@@ -454,21 +459,22 @@ namespace ImmersiveAnatomy.Editor
 
         private static void ApplySecureAndroidSigning()
         {
-            string configPath = "secrets/signing_config.json";
+            string configPath = Path.GetFullPath(Path.Combine(Application.dataPath, "../secrets/signing_config.json"));
             if (File.Exists(configPath))
             {
                 try
                 {
                     string json = File.ReadAllText(configPath);
-                    string ksPath = ExtractJsonField(json, "keystore_path");
+                    string ksRelPath = ExtractJsonField(json, "keystore_path");
                     string ksPass = ExtractJsonField(json, "keystore_pass");
                     string aliasName = ExtractJsonField(json, "keyalias_name");
                     string aliasPass = ExtractJsonField(json, "keyalias_pass");
 
-                    if (!string.IsNullOrEmpty(ksPath) && File.Exists(ksPath))
+                    string ksFullPath = Path.GetFullPath(Path.Combine(Application.dataPath, "../", ksRelPath));
+                    if (!string.IsNullOrEmpty(ksFullPath) && File.Exists(ksFullPath))
                     {
                         PlayerSettings.Android.useCustomKeystore = true;
-                        PlayerSettings.Android.keystoreName = Path.GetFullPath(ksPath);
+                        PlayerSettings.Android.keystoreName = ksFullPath;
                         PlayerSettings.Android.keystorePass = ksPass;
                         PlayerSettings.Android.keyaliasName = aliasName;
                         PlayerSettings.Android.keyaliasPass = aliasPass;
@@ -489,17 +495,40 @@ namespace ImmersiveAnatomy.Editor
             return match.Success ? match.Groups[1].Value : null;
         }
 
-        private const string QUEST_BUILD_TRIGGER = "scratch/run_quest_build.flag";
+        private static string QuestTriggerPath => Path.GetFullPath(Path.Combine(Application.dataPath, "../scratch/run_quest_build.flag"));
+        private static string WindowsTriggerPath => Path.GetFullPath(Path.Combine(Application.dataPath, "../scratch/run_windows_build.flag"));
+        private static string VerifyTriggerPath => Path.GetFullPath(Path.Combine(Application.dataPath, "../scratch/run_verify.flag"));
 
         [InitializeOnLoadMethod]
-        private static void CheckQuestBuildTrigger()
+        private static void InitializeTriggerWatcher()
         {
-            if (File.Exists(QUEST_BUILD_TRIGGER))
+            EditorApplication.update -= OnEditorPeriodicUpdate;
+            EditorApplication.update += OnEditorPeriodicUpdate;
+            Debug.Log($"[DualPlatformRelease] Trigger watcher active (Listening on {QuestTriggerPath})");
+        }
+
+        private static void OnEditorPeriodicUpdate()
+        {
+            if (EditorApplication.isCompiling || EditorApplication.isUpdating) return;
+
+            if (File.Exists(QuestTriggerPath))
             {
-                File.Delete(QUEST_BUILD_TRIGGER);
+                try { File.Delete(QuestTriggerPath); } catch { }
+                Debug.Log("[DualPlatformRelease] Detected QuestTriggerPath! Launching BuildQuestStandaloneApk...");
                 EditorApplication.delayCall += BuildQuestStandaloneApk;
             }
-        }
+            if (File.Exists(WindowsTriggerPath))
+            {
+                try { File.Delete(WindowsTriggerPath); } catch { }
+                Debug.Log("[DualPlatformRelease] Detected WindowsTriggerPath! Launching BuildWindowsDesktopPlayer...");
+                EditorApplication.delayCall += BuildWindowsDesktopPlayer;
+            }
+            if (File.Exists(VerifyTriggerPath))
+            {
+                try { File.Delete(VerifyTriggerPath); } catch { }
+                Debug.Log("[DualPlatformRelease] Detected VerifyTriggerPath! Launching VerifyConfigurationStatus...");
+                EditorApplication.delayCall += VerifyConfigurationStatus;
+            }
         }
     }
 }

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.gourav.immersiveanatomylab"
     android:versionCode="1"
     android:versionName="1.0.0"
@@ -22,8 +23,11 @@
         android:usesCleartextTraffic="true"
         android:theme="@style/UnityThemeSelector">
 
-        <!-- Supported Meta Quest Hardware Family -->
-        <meta-data android:name="com.oculus.supportedDevices" android:value="quest|quest2|questpro|quest3" />
+        <!-- Supported Meta Quest Hardware Family with merger override -->
+        <meta-data 
+            android:name="com.oculus.supportedDevices" 
+            android:value="quest|quest2|questpro|quest3" 
+            tools:replace="android:value" />
         <meta-data android:name="com.oculus.handtracking.frequency" android:value="LOW" />
 
         <activity
