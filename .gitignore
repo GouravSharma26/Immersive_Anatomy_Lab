@@ -33,5 +33,8 @@ unity_interop.ps1
 backend/audio_cache/
 backend/__pycache__/
 scratch/
+.utmp/
+Assets/Resources/
+Assets/Resources.meta
 
 
