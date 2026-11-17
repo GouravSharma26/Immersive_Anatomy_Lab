@@ -410,6 +410,7 @@ namespace ImmersiveAnatomy.Editor
             ConfigurePlayerSettings();
             ConfigureAndroidXR();
             GenerateQuestAndroidManifest();
+            ApplySecureAndroidSigning();
 
             string outputDir = "Builds/Quest";
             if (!Directory.Exists(outputDir)) Directory.CreateDirectory(outputDir);
@@ -429,14 +430,76 @@ namespace ImmersiveAnatomy.Editor
             };
 
             var report = BuildPipeline.BuildPlayer(options);
-            if (report.summary.result == UnityEditor.Build.Reporting.BuildResult.Succeeded)
+            bool success = (report.summary.result == UnityEditor.Build.Reporting.BuildResult.Succeeded);
+            long apkSize = File.Exists(apkPath) ? new FileInfo(apkPath).Length : 0;
+
+            string reportJson = $@"{{
+  ""success"": {success.ToString().ToLower()},
+  ""apk_path"": ""{apkPath.Replace("\\", "/")}"",
+  ""size_bytes"": {apkSize},
+  ""errors"": {report.summary.totalErrors},
+  ""warnings"": {report.summary.totalWarnings}
+}}";
+            File.WriteAllText("scratch/quest_build_result.json", reportJson);
+
+            if (success)
             {
-                Debug.Log($"<color=#00FF00><b>[DualPlatformRelease] Meta Quest Standalone APK Build SUCCEEDED! Total size: {report.summary.totalSize} bytes.</b></color>");
+                Debug.Log($"<color=#00FF00><b>[DualPlatformRelease] Meta Quest Standalone APK Build SUCCEEDED! Total size: {apkSize} bytes.</b></color>");
             }
             else
             {
                 Debug.LogError($"<color=#FF0000><b>[DualPlatformRelease] Meta Quest Standalone APK Build FAILED with {report.summary.totalErrors} errors!</b></color>");
             }
+        }
+
+        private static void ApplySecureAndroidSigning()
+        {
+            string configPath = "secrets/signing_config.json";
+            if (File.Exists(configPath))
+            {
+                try
+                {
+                    string json = File.ReadAllText(configPath);
+                    string ksPath = ExtractJsonField(json, "keystore_path");
+                    string ksPass = ExtractJsonField(json, "keystore_pass");
+                    string aliasName = ExtractJsonField(json, "keyalias_name");
+                    string aliasPass = ExtractJsonField(json, "keyalias_pass");
+
+                    if (!string.IsNullOrEmpty(ksPath) && File.Exists(ksPath))
+                    {
+                        PlayerSettings.Android.useCustomKeystore = true;
+                        PlayerSettings.Android.keystoreName = Path.GetFullPath(ksPath);
+                        PlayerSettings.Android.keystorePass = ksPass;
+                        PlayerSettings.Android.keyaliasName = aliasName;
+                        PlayerSettings.Android.keyaliasPass = aliasPass;
+                        Debug.Log("[DualPlatformRelease] Secure Android Keystore configured for release signing.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning("[DualPlatformRelease] Secure signing resolution notice: " + ex.Message);
+                }
+            }
+        }
+
+        private static string ExtractJsonField(string json, string field)
+        {
+            string pattern = $"\"{field}\"\\s*:\\s*\"([^\"]+)\"";
+            var match = System.Text.RegularExpressions.Regex.Match(json, pattern);
+            return match.Success ? match.Groups[1].Value : null;
+        }
+
+        private const string QUEST_BUILD_TRIGGER = "scratch/run_quest_build.flag";
+
+        [InitializeOnLoadMethod]
+        private static void CheckQuestBuildTrigger()
+        {
+            if (File.Exists(QUEST_BUILD_TRIGGER))
+            {
+                File.Delete(QUEST_BUILD_TRIGGER);
+                EditorApplication.delayCall += BuildQuestStandaloneApk;
+            }
+        }
         }
     }
 }
