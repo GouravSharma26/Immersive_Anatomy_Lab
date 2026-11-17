@@ -17,9 +17,13 @@ namespace ImmersiveAnatomy.VR
         [Header("Console Buttons")]
         public Button explodeBtn;
         public Button xrayBtn;
+        public Button vascularBtn;
+        public Button thoracicBtn;
         public Button resetAnatomyBtn;
         public Text explodeBtnText;
         public Text xrayBtnText;
+        public Text vascularBtnText;
+        public Text thoracicBtnText;
 
         [Header("System Toggle Buttons")]
         public Button skeletalBtn;
@@ -45,19 +49,197 @@ namespace ImmersiveAnatomy.VR
 
         private VRGrabbableOrgan activeExaminedOrgan;
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void AutoEnsureDissectionConsole()
+        {
+            if (FindFirstObjectByType<VRDissectionTableConsole>() == null)
+            {
+                GameObject table = GameObject.Find("DissectionTable");
+                GameObject consoleGO = new GameObject("DissectionTableConsole");
+                if (table != null)
+                {
+                    consoleGO.transform.position = new Vector3(table.transform.position.x, 0.92f, table.transform.position.z - 0.55f);
+                }
+                else
+                {
+                    consoleGO.transform.position = new Vector3(0f, 0.92f, 0.95f);
+                }
+                consoleGO.transform.rotation = Quaternion.Euler(35f, 0f, 0f);
+                consoleGO.AddComponent<VRDissectionTableConsole>();
+            }
+        }
+
         private void Awake()
         {
             if (Instance == null) Instance = this;
-            else if (Instance != this) Destroy(gameObject);
+            else if (Instance != this) { Destroy(gameObject); return; }
 
             if (audioSource == null) audioSource = GetComponent<AudioSource>();
+            if (audioSource == null) audioSource = gameObject.AddComponent<AudioSource>();
         }
 
         private void Start()
         {
             FindControllers();
+            EnsureConsoleUI();
             InitButtons();
             UpdateCardDefault();
+
+            if (xrayViewController != null)
+            {
+                xrayViewController.OnModeChanged += HandleModeChanged;
+                UpdateModeButtonStates();
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (xrayViewController != null)
+            {
+                xrayViewController.OnModeChanged -= HandleModeChanged;
+            }
+        }
+
+        private void HandleModeChanged(XRayViewController.MedicalVisualizationMode mode)
+        {
+            UpdateModeButtonStates();
+        }
+
+        public void EnsureConsoleUI()
+        {
+            if (vascularBtn != null && thoracicBtn != null) return;
+
+            Transform canvasTrans = transform.Find("ConsoleCanvas");
+            if (canvasTrans == null)
+            {
+                GameObject canvasGO = new GameObject("ConsoleCanvas");
+                canvasGO.transform.SetParent(transform, false);
+                canvasGO.transform.localPosition = new Vector3(0f, 0.005f, 0f);
+                canvasGO.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                canvasGO.transform.localScale = new Vector3(0.001f, 0.001f, 0.001f);
+
+                Canvas canvas = canvasGO.AddComponent<Canvas>();
+                canvas.renderMode = RenderMode.WorldSpace;
+                RectTransform crt = canvasGO.GetComponent<RectTransform>();
+                crt.sizeDelta = new Vector2(1400f, 350f);
+
+                CanvasScaler scaler = canvasGO.AddComponent<CanvasScaler>();
+                scaler.dynamicPixelsPerUnit = 4f;
+
+                canvasGO.AddComponent<GraphicRaycaster>();
+                canvasGO.AddComponent<UnityEngine.XR.Interaction.Toolkit.UI.TrackedDeviceGraphicRaycaster>();
+                canvasTrans = canvasGO.transform;
+            }
+
+            if (transform.Find("ConsolePlate") == null)
+            {
+                GameObject backing = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                backing.name = "ConsolePlate";
+                backing.transform.SetParent(transform, false);
+                backing.transform.localPosition = new Vector3(0f, -0.015f, 0f);
+                backing.transform.localScale = new Vector3(1.4f, 0.025f, 0.35f);
+                var plateRend = backing.GetComponent<MeshRenderer>();
+                if (plateRend != null && plateRend.material != null)
+                {
+                    plateRend.material.color = new Color(0.06f, 0.09f, 0.14f);
+                }
+            }
+
+            Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            if (font == null) font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+
+            // Build Row 1 buttons if unassigned
+            float r1Y = 70f;
+            float bW = 250f;
+            float bH = 55f;
+            float spacingX = 265f;
+            float startX = -2f * spacingX;
+
+            if (explodeBtn == null)
+            {
+                var go = CreateConsoleButton("ExplodedViewButton", canvasTrans, new Vector2(startX + 0 * spacingX, r1Y), new Vector2(bW, bH), "Exploded View", font, 18, new Color(0.18f, 0.28f, 0.45f));
+                explodeBtn = go.GetComponent<Button>();
+                explodeBtnText = go.GetComponentInChildren<Text>();
+            }
+
+            if (xrayBtn == null)
+            {
+                var go = CreateConsoleButton("XRayViewButton", canvasTrans, new Vector2(startX + 1 * spacingX, r1Y), new Vector2(bW, bH), "X-Ray Mode", font, 18, new Color(0.12f, 0.35f, 0.50f));
+                xrayBtn = go.GetComponent<Button>();
+                xrayBtnText = go.GetComponentInChildren<Text>();
+            }
+
+            if (vascularBtn == null)
+            {
+                var go = CreateConsoleButton("VascularViewButton", canvasTrans, new Vector2(startX + 2 * spacingX, r1Y), new Vector2(bW, bH), "Vascular Angiogram", font, 18, new Color(0.50f, 0.15f, 0.22f));
+                vascularBtn = go.GetComponent<Button>();
+                vascularBtnText = go.GetComponentInChildren<Text>();
+            }
+
+            if (thoracicBtn == null)
+            {
+                var go = CreateConsoleButton("ThoracicViewButton", canvasTrans, new Vector2(startX + 3 * spacingX, r1Y), new Vector2(bW, bH), "Thoracic Silhouette", font, 18, new Color(0.15f, 0.40f, 0.45f));
+                thoracicBtn = go.GetComponent<Button>();
+                thoracicBtnText = go.GetComponentInChildren<Text>();
+            }
+
+            if (resetAnatomyBtn == null)
+            {
+                var go = CreateConsoleButton("ResetAnatomyButton", canvasTrans, new Vector2(startX + 4 * spacingX, r1Y), new Vector2(bW, bH), "Reset Anatomy", font, 18, new Color(0.15f, 0.45f, 0.28f));
+                resetAnatomyBtn = go.GetComponent<Button>();
+            }
+
+            // Build Row 2 buttons if unassigned
+            float r2Y = -15f;
+            float sysBW = 205f;
+            float sysBH = 48f;
+            float sysSpacingX = 220f;
+            float sysStartX = -2.5f * sysSpacingX;
+
+            if (skeletalBtn == null) skeletalBtn = CreateConsoleButton("BtnSkeletal", canvasTrans, new Vector2(sysStartX + 0 * sysSpacingX, r2Y), new Vector2(sysBW, sysBH), "Skeletal System", font, 16, new Color(0.20f, 0.25f, 0.35f)).GetComponent<Button>();
+            if (cardioBtn == null) cardioBtn = CreateConsoleButton("BtnCardio", canvasTrans, new Vector2(sysStartX + 1 * sysSpacingX, r2Y), new Vector2(sysBW, sysBH), "Cardiovascular", font, 16, new Color(0.20f, 0.25f, 0.35f)).GetComponent<Button>();
+            if (respBtn == null) respBtn = CreateConsoleButton("BtnResp", canvasTrans, new Vector2(sysStartX + 2 * sysSpacingX, r2Y), new Vector2(sysBW, sysBH), "Respiratory", font, 16, new Color(0.20f, 0.25f, 0.35f)).GetComponent<Button>();
+            if (nervousBtn == null) nervousBtn = CreateConsoleButton("BtnNervous", canvasTrans, new Vector2(sysStartX + 3 * sysSpacingX, r2Y), new Vector2(sysBW, sysBH), "Nervous System", font, 16, new Color(0.20f, 0.25f, 0.35f)).GetComponent<Button>();
+            if (digestiveBtn == null) digestiveBtn = CreateConsoleButton("BtnDigestive", canvasTrans, new Vector2(sysStartX + 4 * sysSpacingX, r2Y), new Vector2(sysBW, sysBH), "Digestive System", font, 16, new Color(0.20f, 0.25f, 0.35f)).GetComponent<Button>();
+            if (showAllBtn == null) showAllBtn = CreateConsoleButton("BtnShowAll", canvasTrans, new Vector2(sysStartX + 5 * sysSpacingX, r2Y), new Vector2(sysBW, sysBH), "Show All Systems", font, 16, new Color(0.12f, 0.40f, 0.48f)).GetComponent<Button>();
+        }
+
+        private GameObject CreateConsoleButton(string name, Transform parent, Vector2 pos, Vector2 size, string text, Font font, int fontSize, Color baseColor)
+        {
+            GameObject go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            RectTransform rt = go.AddComponent<RectTransform>();
+            rt.anchoredPosition = pos;
+            rt.sizeDelta = size;
+
+            Image img = go.AddComponent<Image>();
+            img.color = baseColor;
+
+            Button btn = go.AddComponent<Button>();
+            btn.targetGraphic = img;
+            ColorBlock cb = btn.colors;
+            cb.highlightedColor = baseColor * 1.45f;
+            cb.pressedColor = baseColor * 1.8f;
+            btn.colors = cb;
+
+            BoxCollider col = go.AddComponent<BoxCollider>();
+            col.size = new Vector3(size.x, size.y, 10f);
+
+            GameObject labelGO = new GameObject("Label");
+            labelGO.transform.SetParent(go.transform, false);
+            RectTransform lrt = labelGO.AddComponent<RectTransform>();
+            lrt.anchoredPosition = Vector2.zero;
+            lrt.sizeDelta = size;
+
+            Text labelText = labelGO.AddComponent<Text>();
+            labelText.font = font;
+            labelText.fontSize = fontSize;
+            labelText.fontStyle = FontStyle.Bold;
+            labelText.alignment = TextAnchor.MiddleCenter;
+            labelText.color = Color.white;
+            labelText.text = text;
+
+            return go;
         }
 
         private void FindControllers()
@@ -77,6 +259,16 @@ namespace ImmersiveAnatomy.VR
             if (xrayBtn != null)
             {
                 xrayBtn.onClick.AddListener(ToggleXRayView);
+            }
+
+            if (vascularBtn != null)
+            {
+                vascularBtn.onClick.AddListener(ToggleVascularView);
+            }
+
+            if (thoracicBtn != null)
+            {
+                thoracicBtn.onClick.AddListener(ToggleThoracicView);
             }
 
             if (resetAnatomyBtn != null)
@@ -135,11 +327,58 @@ namespace ImmersiveAnatomy.VR
             if (xrayViewController != null)
             {
                 xrayViewController.ToggleXRay();
-                if (xrayBtnText != null)
-                {
-                    xrayBtnText.text = xrayViewController.IsXRayActive ? "Normal Opacity" : "X-Ray Mode";
-                }
+                UpdateModeButtonStates();
                 PlaySound(clickClip, 0.8f);
+            }
+        }
+
+        public void ToggleVascularView()
+        {
+            if (xrayViewController == null) FindControllers();
+            if (xrayViewController != null)
+            {
+                xrayViewController.ToggleVascularMode();
+                UpdateModeButtonStates();
+                PlaySound(clickClip, 0.8f);
+            }
+        }
+
+        public void ToggleThoracicView()
+        {
+            if (xrayViewController == null) FindControllers();
+            if (xrayViewController != null)
+            {
+                xrayViewController.ToggleThoracicMode();
+                UpdateModeButtonStates();
+                PlaySound(clickClip, 0.8f);
+            }
+        }
+
+        public void UpdateModeButtonStates()
+        {
+            if (xrayViewController == null) return;
+
+            var mode = xrayViewController.CurrentMode;
+
+            if (xrayBtnText != null)
+            {
+                xrayBtnText.text = (mode == XRayViewController.MedicalVisualizationMode.XRay) ? "Normal View" : "X-Ray Mode";
+            }
+
+            if (vascularBtnText != null)
+            {
+                vascularBtnText.text = (mode == XRayViewController.MedicalVisualizationMode.Vascular) ? "Exit Vascular" : "Vascular Angiogram";
+            }
+
+            if (thoracicBtnText != null)
+            {
+                thoracicBtnText.text = (mode == XRayViewController.MedicalVisualizationMode.ThoracicTranslucent) ? "Exit Thoracic" : "Thoracic Silhouette";
+            }
+
+            // Sync with VRClinicalTablet if present in scene
+            if (VRClinicalTablet.Instance != null)
+            {
+                VRClinicalTablet.Instance.SyncModeStates(mode);
             }
         }
 
@@ -151,9 +390,9 @@ namespace ImmersiveAnatomy.VR
                 explodedViewController.ResetExplosion();
             }
 
-            if (xrayViewController != null && xrayViewController.IsXRayActive)
+            if (xrayViewController != null)
             {
-                xrayViewController.SetXRayActive(false);
+                xrayViewController.ResetToNormal();
             }
 
             if (isolationController != null && isolationController.IsInIsolationMode)
@@ -174,7 +413,7 @@ namespace ImmersiveAnatomy.VR
             }
 
             if (explodeBtnText != null) explodeBtnText.text = "Exploded View";
-            if (xrayBtnText != null) xrayBtnText.text = "X-Ray Mode";
+            UpdateModeButtonStates();
 
             PlaySound(resetClip, 1f);
             UpdateCardDefault();
