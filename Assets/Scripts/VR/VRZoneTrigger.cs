@@ -57,6 +57,34 @@ namespace ImmersiveAnatomy.VR
             }
         }
 
+        private void OnTriggerExit(Collider other)
+        {
+            // Detect if player camera or rig exited zone
+            if (other.CompareTag("MainCamera") || other.GetComponentInParent<Camera>() != null || other.name.Contains("XR") || other.name.Contains("Player"))
+            {
+                OnPlayerExitedZone();
+            }
+        }
+
+        public void OnPlayerExitedZone()
+        {
+            AnatomyInteraction interaction = FindFirstObjectByType<AnatomyInteraction>();
+            if (interaction == null) return;
+
+            if (zoneType == LabZoneType.TeachingAI)
+            {
+                if (interaction.isTypingTutorQuestion)
+                {
+                    interaction.isTypingTutorQuestion = false;
+                    interaction.SetCursorVisible(false);
+                }
+                if (interaction.currentArea == AnatomyInteraction.LabArea.AITutor)
+                {
+                    interaction.currentArea = AnatomyInteraction.LabArea.Exploration;
+                }
+            }
+        }
+
         public void OnPlayerEnteredZone()
         {
             PlayEnterSound();

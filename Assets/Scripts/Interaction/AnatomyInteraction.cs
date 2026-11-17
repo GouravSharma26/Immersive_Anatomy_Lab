@@ -42,9 +42,20 @@ public class AnatomyInteraction : MonoBehaviour
     private OrganInteractable hoveredOrgan;
     private OrganInteractable selectedOrgan;
 
+    private void Awake()
+    {
+        Application.runInBackground = true;
+    }
+
     private void Start()
     {
         if (playerCamera == null) playerCamera = Camera.main;
+        if (playerCamera != null)
+        {
+            float p = playerCamera.transform.localEulerAngles.x;
+            if (p > 180f) p -= 360f;
+            cameraPitch = p;
+        }
         if (highlighter == null) highlighter = GetComponent<OrganHighlighter>();
         if (isolationController == null) isolationController = GetComponent<OrganIsolationController>();
         if (explodedViewController == null) explodedViewController = GetComponent<ExplodedViewController>();
@@ -197,47 +208,60 @@ public class AnatomyInteraction : MonoBehaviour
 
     private void Update()
     {
-        // Shortcut to ask Dr. Nova AI: works only when in the Dr. Nova AI tutor section circle!
+        // 1. Check if player moved out of the Dr. Nova AI teaching circle
+        if (isTypingTutorQuestion && playerCamera != null)
+        {
+            Vector2 pPos = new Vector2(playerCamera.transform.position.x, playerCamera.transform.position.z);
+            Vector2 tutorCenter = new Vector2(4.6f, 1.4f);
+            if (Vector2.Distance(pPos, tutorCenter) > 2.2f || currentArea != LabArea.AITutor)
+            {
+                isTypingTutorQuestion = false;
+                SetCursorVisible(false);
+                if (currentArea == LabArea.AITutor) currentArea = LabArea.Exploration;
+            }
+        }
+
+        // 2. While typing question in Dr. Nova AI:
+        if (isTypingTutorQuestion)
+        {
+            // Escape key closes the text area ONLY - consumes the key so scene does not halt or toggle cursor!
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                isTypingTutorQuestion = false;
+                SetCursorVisible(false);
+                return;
+            }
+
+            // Enter key submits the inquiry
+            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
+            {
+                SubmitTutorQuestion();
+                return;
+            }
+
+            // CRITICAL: Block all game hotkeys (H, V, C, X, Z, 1-6, WASD, Mouse Look, etc.) while typing!
+            return;
+        }
+
+        // 3. Open Dr. Nova AI chat modal if inside the tutor zone circle
         bool inTutorZone = (currentArea == LabArea.AITutor);
         if (inTutorZone)
         {
-            if (!isTypingTutorQuestion)
+            if (Input.GetKeyDown(KeyCode.T) || Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || Input.GetKeyDown(KeyCode.Slash))
             {
-                if (Input.GetKeyDown(KeyCode.T) || Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || Input.GetKeyDown(KeyCode.Slash))
-                {
-                    isTypingTutorQuestion = true;
-                    tutorInputQuery = "";
-                    SetCursorVisible(true);
-                }
+                isTypingTutorQuestion = true;
+                tutorInputQuery = "";
+                SetCursorVisible(true);
+                return;
             }
-            else
-            {
-                if (Input.GetKeyDown(KeyCode.Escape))
-                {
-                    isTypingTutorQuestion = false;
-                    SetCursorVisible(false);
-                }
-                else if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
-                {
-                    SubmitTutorQuestion();
-                }
-            }
-        }
-        else if (isTypingTutorQuestion)
-        {
-            isTypingTutorQuestion = false;
-            SetCursorVisible(false);
         }
 
         HandlePlayerLocomotion();
 
-        // Toggle mouse cursor visibility with Escape, Tilde (~), or M
+        // Toggle mouse cursor visibility with Escape, Tilde (~), or M (only when NOT typing)
         if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.BackQuote) || Input.GetKeyDown(KeyCode.M))
         {
-            if (!isTypingTutorQuestion)
-            {
-                SetCursorVisible(!Cursor.visible);
-            }
+            SetCursorVisible(!Cursor.visible);
         }
 
         // Toggle simulated VR hands with V
@@ -342,7 +366,8 @@ public class AnatomyInteraction : MonoBehaviour
             {
                 if (playerRigTransform != null)
                 {
-                    playerRigTransform.Rotate(Vector3.up, mouseX, Space.World);
+                    // Rotate the rig around the camera's exact world position so the camera stays in place!
+                    playerRigTransform.RotateAround(playerCamera.transform.position, Vector3.up, mouseX);
                 }
                 else
                 {
@@ -1125,6 +1150,14 @@ public class AnatomyInteraction : MonoBehaviour
         // 5.5. INTERACTIVE DR. NOVA AI QUESTION MODAL (Tutor Area Shortcut)
         if (isTypingTutorQuestion)
         {
+            if (Event.current.type == EventType.KeyDown && Event.current.keyCode == KeyCode.Escape)
+            {
+                isTypingTutorQuestion = false;
+                SetCursorVisible(false);
+                Event.current.Use();
+                return;
+            }
+
             float boxW = 660f;
             float boxH = 155f;
             float boxX = (Screen.width - boxW) * 0.5f;
