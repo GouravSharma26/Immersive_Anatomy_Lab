@@ -62,7 +62,7 @@ public class OrganComparisonController : MonoBehaviour
 
     public void EnsurePedestals()
     {
-        // 1. Physical Left Comparison Pedestal (Cyan)
+        // 1. Physical Left Comparison Pedestal (Cyan) - Placed ON TOP of table in plain sight
         GameObject lp = GameObject.Find("LeftComparisonPedestal");
         if (lp == null || lp.GetComponent<MeshRenderer>() == null)
         {
@@ -71,13 +71,14 @@ public class OrganComparisonController : MonoBehaviour
             lp.name = "LeftComparisonPedestal";
         }
 
-        lp.transform.position = new Vector3(-0.85f, 0.45f, 0.75f);
-        lp.transform.localScale = new Vector3(0.45f, 0.45f, 0.45f);
+        lp.transform.SetParent(null, true);
+        lp.transform.position = new Vector3(-0.65f, 0.95f, 1.25f);
+        lp.transform.localScale = new Vector3(0.38f, 0.05f, 0.38f);
 
         var rendA = lp.GetComponent<MeshRenderer>();
         if (rendA != null)
         {
-            rendA.material.color = new Color(0.12f, 0.22f, 0.38f);
+            rendA.material.color = new Color(0.1f, 0.22f, 0.45f);
         }
 
         if (lp.GetComponent<ComparisonPedestalTrigger>() == null)
@@ -94,15 +95,15 @@ public class OrganComparisonController : MonoBehaviour
             GameObject capA = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             capA.name = "GlowCapA";
             capA.transform.SetParent(lp.transform, false);
-            capA.transform.localPosition = new Vector3(0f, 1.01f, 0f);
-            capA.transform.localScale = new Vector3(1.08f, 0.04f, 1.08f);
+            capA.transform.localPosition = new Vector3(0f, 1.05f, 0f);
+            capA.transform.localScale = new Vector3(1.1f, 0.08f, 1.1f);
             var col = capA.GetComponent<Collider>();
             if (col != null) Destroy(col);
             var capRend = capA.GetComponent<MeshRenderer>();
-            if (capRend != null) capRend.material.color = new Color(0f, 0.9f, 1f, 0.95f);
+            if (capRend != null) capRend.material.color = new Color(0f, 0.95f, 1f, 0.95f);
         }
 
-        // 2. Physical Right Comparison Pedestal (Magenta)
+        // 2. Physical Right Comparison Pedestal (Magenta) - Placed ON TOP of table in plain sight
         GameObject rp = GameObject.Find("RightComparisonPedestal");
         if (rp == null || rp.GetComponent<MeshRenderer>() == null)
         {
@@ -111,13 +112,14 @@ public class OrganComparisonController : MonoBehaviour
             rp.name = "RightComparisonPedestal";
         }
 
-        rp.transform.position = new Vector3(0.85f, 0.45f, 0.75f);
-        rp.transform.localScale = new Vector3(0.45f, 0.45f, 0.45f);
+        rp.transform.SetParent(null, true);
+        rp.transform.position = new Vector3(0.65f, 0.95f, 1.25f);
+        rp.transform.localScale = new Vector3(0.38f, 0.05f, 0.38f);
 
         var rendB = rp.GetComponent<MeshRenderer>();
         if (rendB != null)
         {
-            rendB.material.color = new Color(0.35f, 0.14f, 0.32f);
+            rendB.material.color = new Color(0.4f, 0.12f, 0.35f);
         }
 
         if (rp.GetComponent<ComparisonPedestalTrigger>() == null)
@@ -134,12 +136,12 @@ public class OrganComparisonController : MonoBehaviour
             GameObject capB = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             capB.name = "GlowCapB";
             capB.transform.SetParent(rp.transform, false);
-            capB.transform.localPosition = new Vector3(0f, 1.01f, 0f);
-            capB.transform.localScale = new Vector3(1.08f, 0.04f, 1.08f);
+            capB.transform.localPosition = new Vector3(0f, 1.05f, 0f);
+            capB.transform.localScale = new Vector3(1.1f, 0.08f, 1.1f);
             var col = capB.GetComponent<Collider>();
             if (col != null) Destroy(col);
             var capRend = capB.GetComponent<MeshRenderer>();
-            if (capRend != null) capRend.material.color = new Color(1f, 0.25f, 0.85f, 0.95f);
+            if (capRend != null) capRend.material.color = new Color(1f, 0.25f, 0.9f, 0.95f);
         }
 
         if (inspectionFocalPoint == null)
@@ -149,7 +151,7 @@ public class OrganComparisonController : MonoBehaviour
             {
                 ifp = new GameObject("InspectionFocalPoint");
             }
-            ifp.transform.position = new Vector3(0f, 1.30f, 0.60f);
+            ifp.transform.position = new Vector3(0f, 1.35f, 0.85f);
             inspectionFocalPoint = ifp.transform;
         }
 
@@ -210,7 +212,7 @@ public class OrganComparisonController : MonoBehaviour
         extractedOriginalRot = organ.transform.rotation;
         extractedOriginalScale = organ.transform.localScale;
 
-        Vector3 targetPos = inspectionFocalPoint != null ? inspectionFocalPoint.position : new Vector3(0f, 1.30f, 0.55f);
+        Vector3 targetPos = inspectionFocalPoint != null ? inspectionFocalPoint.position : new Vector3(0f, 1.35f, 0.85f);
         // Face forward toward the player
         Quaternion targetRot = Quaternion.Euler(0f, 180f, 0f);
 
@@ -257,7 +259,8 @@ public class OrganComparisonController : MonoBehaviour
 
         if (ExtractedOrgan == organ) ExtractedOrgan = null;
 
-        Vector3 targetPos = leftPedestal.position + Vector3.up * 0.18f;
+        // Position elevated on top of Pedestal A in clear view at eye level
+        Vector3 targetPos = new Vector3(leftPedestal.position.x, 1.35f, leftPedestal.position.z);
         Quaternion targetRot = Quaternion.Euler(0f, 180f, 0f);
 
         StartCoroutine(MoveRoutine(OrganA.transform, targetPos, targetRot, organAOriginalScale * 1.25f, 0.45f));
@@ -304,7 +307,8 @@ public class OrganComparisonController : MonoBehaviour
 
         if (ExtractedOrgan == organ) ExtractedOrgan = null;
 
-        Vector3 targetPos = rightPedestal.position + Vector3.up * 0.18f;
+        // Position elevated on top of Pedestal B in clear view at eye level
+        Vector3 targetPos = new Vector3(rightPedestal.position.x, 1.35f, rightPedestal.position.z);
         Quaternion targetRot = Quaternion.Euler(0f, 180f, 0f);
 
         StartCoroutine(MoveRoutine(OrganB.transform, targetPos, targetRot, organBOriginalScale * 1.25f, 0.45f));
@@ -435,13 +439,13 @@ public class OrganComparisonController : MonoBehaviour
 
         if (OrganA != null)
         {
-            Vector3 posA = leftPedestal.position + Vector3.up * 0.18f;
+            Vector3 posA = new Vector3(leftPedestal.position.x, 1.35f, leftPedestal.position.z);
             StartCoroutine(MoveRoutine(OrganA.transform, posA, Quaternion.Euler(0f, 180f, 0f), organAOriginalScale * 1.25f, 0.45f));
         }
 
         if (OrganB != null)
         {
-            Vector3 posB = rightPedestal.position + Vector3.up * 0.18f;
+            Vector3 posB = new Vector3(rightPedestal.position.x, 1.35f, rightPedestal.position.z);
             StartCoroutine(MoveRoutine(OrganB.transform, posB, Quaternion.Euler(0f, 180f, 0f), organBOriginalScale * 1.25f, 0.45f));
         }
 
@@ -515,6 +519,18 @@ public class OrganComparisonController : MonoBehaviour
     private IEnumerator MoveRoutine(Transform target, Vector3 destPos, Quaternion destRot, Vector3 destScale, float duration = 0.5f)
     {
         if (target == null) yield break;
+
+        target.gameObject.SetActive(true);
+        var rends = target.GetComponentsInChildren<Renderer>(true);
+        foreach (var r in rends)
+        {
+            if (r != null) r.enabled = true;
+        }
+
+        if (destScale.x < 0.05f || destScale.y < 0.05f || destScale.z < 0.05f)
+        {
+            destScale = Vector3.one;
+        }
 
         float elapsed = 0f;
         Vector3 startPos = target.position;

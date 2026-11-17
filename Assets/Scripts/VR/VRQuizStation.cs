@@ -68,10 +68,10 @@ namespace ImmersiveAnatomy.VR
 
             if (audioSource == null) audioSource = GetComponent<AudioSource>();
 
-            // Ensure inward-facing rotation so world canvas is never seen from behind
+            // Ensure inward-facing rotation into the room (+X) so text reads normally from left to right
             if (transform.position.x < -3f)
             {
-                transform.rotation = Quaternion.Euler(0f, 90f, 0f);
+                transform.rotation = Quaternion.Euler(0f, -90f, 0f);
             }
         }
 

@@ -72,6 +72,32 @@ public class AnatomyInteraction : MonoBehaviour
         {
             SetCursorVisible(false);
         }
+
+        // Hide simulated VR controller hands by default in desktop mode for a crystal clean view
+        SetVRHandsVisible(false);
+    }
+
+    public bool showVRHands = false;
+
+    public void SetVRHandsVisible(bool isVisible)
+    {
+        showVRHands = isVisible;
+        string[] controllerNames = new string[] { "Left Controller", "Right Controller", "XR Controller Left", "XR Controller Right", "Left Controller Visual", "Right Controller Visual" };
+        foreach (var name in controllerNames)
+        {
+            var go = GameObject.Find(name);
+            if (go != null)
+            {
+                foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+                {
+                    r.enabled = isVisible;
+                }
+                foreach (var lr in go.GetComponentsInChildren<LineRenderer>(true))
+                {
+                    lr.enabled = isVisible;
+                }
+            }
+        }
     }
 
     public void SetCursorVisible(bool isVisible)
@@ -88,6 +114,18 @@ public class AnatomyInteraction : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.BackQuote) || Input.GetKeyDown(KeyCode.M))
         {
             SetCursorVisible(!Cursor.visible);
+        }
+
+        // Toggle simulated VR hands with V
+        if (Input.GetKeyDown(KeyCode.V))
+        {
+            SetVRHandsVisible(!showVRHands);
+        }
+
+        // Toggle HUD Panels with H or Tab
+        if (Input.GetKeyDown(KeyCode.H) || Input.GetKeyDown(KeyCode.Tab))
+        {
+            showDesktopHUD = !showDesktopHUD;
         }
 
         HandleRaycastHover();
@@ -536,7 +574,20 @@ public class AnatomyInteraction : MonoBehaviour
         // 0. FIRST-PERSON CENTER TARGETING RETICLE (Always drawn where you are looking)
         DrawCenterReticle();
 
-        if (!showDesktopHUD) return;
+        if (!showDesktopHUD)
+        {
+            if (GUI.Button(new Rect(Screen.width - 165, 15, 150, 32), "Show Panels [H]"))
+            {
+                showDesktopHUD = true;
+            }
+            return;
+        }
+
+        // In comparison mode, default to Systems & View so Dr. Nova doesn't crowd out the comparison matrix
+        if (comparisonController != null && comparisonController.IsInComparisonMode && currentArea == LabArea.AITutor)
+        {
+            currentArea = LabArea.Exploration;
+        }
 
         // 1. TOP HEADER BANNER WITH DEDICATED AREA TABS
         GUI.Box(new Rect(15, 10, Screen.width - 30, 46), "");
@@ -562,6 +613,11 @@ public class AnatomyInteraction : MonoBehaviour
                     learningUI.quizEngine.StartClinicalCase(0);
                 }
             }
+        }
+
+        if (GUI.Button(new Rect(Screen.width - 380, 16, 125, 32), "Hide Panels [H]"))
+        {
+            showDesktopHUD = false;
         }
 
         string modeStatus = "<color=#00E5FF>EXPLORATION</color>";
@@ -881,7 +937,8 @@ public class AnatomyInteraction : MonoBehaviour
         // 6. BOTTOM CONTROLS QUICK BAR
         GUI.Box(new Rect(15, Screen.height - 45, Screen.width - 30, 32), "");
         string cursorStatus = Cursor.visible ? "<color=#FFCC00>Visible</color>" : "<color=#00FFAA>Hidden</color>";
-        string hint = $"<b>Controls:</b> WASD Move | Mouse Look | G / Mid-Click Grab | Click Select | Q/E Rotate | F Focus | C Compare | <b>Cursor [{cursorStatus} - Esc/~ to Toggle]</b>";
+        string handsStatus = showVRHands ? "<color=#00FFAA>ON</color>" : "<color=#888888>OFF</color>";
+        string hint = $"<b>Controls:</b> WASD Move | Mouse Look | Left-Click Select / Snap | Q/E Rotate | F Focus | C Compare | <b>Panels [H]</b> | <b>VR Hands: {handsStatus} [V]</b> | <b>Cursor [{cursorStatus} - Esc]</b>";
         GUI.Label(new Rect(25, Screen.height - 39, Screen.width - 50, 24), hint);
     }
 }

@@ -38,10 +38,10 @@ namespace ImmersiveAnatomy.VR
 
             if (audioSource == null) audioSource = GetComponent<AudioSource>();
 
-            // Ensure forward-facing rotation so wall board is never seen from behind
+            // Ensure forward-facing rotation into the room (+Z) so text reads normally from left to right
             if (transform.position.z < -3f)
             {
-                transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+                transform.rotation = Quaternion.identity;
             }
         }
 

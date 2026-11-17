@@ -417,7 +417,7 @@ public class SetupVRScene
         kioskRoot = new GameObject("VRQuizStation");
         // Wall-mounted on the left wall with clear sightline to central body, facing inward (+X)
         kioskRoot.transform.position = new Vector3(-6.2f, 0.2f, 1.4f);
-        kioskRoot.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
+        kioskRoot.transform.rotation = Quaternion.Euler(0f, -90f, 0f);
 
         Font font = GetLabFont();
         VRQuizStation station = kioskRoot.AddComponent<VRQuizStation>();
@@ -498,7 +498,7 @@ public class SetupVRScene
         podRoot = new GameObject("VRAINovaPod");
         // Wall-mounted on the right wall with clear sightline to central body, facing inward (-X)
         podRoot.transform.position = new Vector3(6.2f, 0.2f, 1.4f);
-        podRoot.transform.rotation = Quaternion.Euler(0f, -90f, 0f);
+        podRoot.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
 
         Font font = GetLabFont();
         VRAINovaPod pod = podRoot.AddComponent<VRAINovaPod>();
@@ -548,13 +548,13 @@ public class SetupVRScene
         Material glowRingMatA = SetupLabScene.CreateMaterial("Lab", "GlowRingA", new Color(0f, 0.8f, 1f, 0.9f), 0.9f, 0.2f, false, new Color(0f, 0.9f, 1f, 0.9f));
         Material glowRingMatB = SetupLabScene.CreateMaterial("Lab", "GlowRingB", new Color(1f, 0.2f, 0.8f, 0.9f), 0.9f, 0.2f, false, new Color(1f, 0.3f, 0.9f, 0.9f));
 
-        // 1. PHYSICAL COMPARISON PILLAR A (CYAN) - In workspace flanking central table
+        // 1. PHYSICAL COMPARISON PILLAR A (CYAN) - Sleek platform mounted on top of the examination table
         GameObject leftPed = GameObject.Find("LeftComparisonPedestal");
         if (leftPed != null) UnityEngine.Object.DestroyImmediate(leftPed);
         leftPed = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         leftPed.name = "LeftComparisonPedestal";
-        leftPed.transform.position = new Vector3(-0.85f, 0.45f, 0.75f);
-        leftPed.transform.localScale = new Vector3(0.45f, 0.45f, 0.45f);
+        leftPed.transform.position = new Vector3(-0.65f, 0.95f, 1.25f);
+        leftPed.transform.localScale = new Vector3(0.38f, 0.05f, 0.38f);
         leftPed.GetComponent<Renderer>().sharedMaterial = leftPedMat;
 
         var trigA = leftPed.AddComponent<ComparisonPedestalTrigger>();
@@ -571,13 +571,13 @@ public class SetupVRScene
         GameObject labelCanvasA = CreateWorldCanvas("LabelCanvasA", leftPed.transform, new Vector3(0f, 1.45f, 0f), Quaternion.Euler(0f, 180f, 0f), new Vector2(400f, 120f), 0.001f);
         CreateText("LabelTextA", labelCanvasA.transform, Vector2.zero, new Vector2(380f, 100f), "<b>PEDESTAL A</b>\n<size=18><color=#00E5FF>Auto-Snap / Place Organ 1</color></size>", font, 24, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
 
-        // 2. PHYSICAL COMPARISON PILLAR B (MAGENTA) - In workspace flanking central table
+        // 2. PHYSICAL COMPARISON PILLAR B (MAGENTA) - Sleek platform mounted on top of the examination table
         GameObject rightPed = GameObject.Find("RightComparisonPedestal");
         if (rightPed != null) UnityEngine.Object.DestroyImmediate(rightPed);
         rightPed = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         rightPed.name = "RightComparisonPedestal";
-        rightPed.transform.position = new Vector3(0.85f, 0.45f, 0.75f);
-        rightPed.transform.localScale = new Vector3(0.45f, 0.45f, 0.45f);
+        rightPed.transform.position = new Vector3(0.65f, 0.95f, 1.25f);
+        rightPed.transform.localScale = new Vector3(0.38f, 0.05f, 0.38f);
         rightPed.GetComponent<Renderer>().sharedMaterial = rightPedMat;
 
         var trigB = rightPed.AddComponent<ComparisonPedestalTrigger>();
@@ -599,8 +599,8 @@ public class SetupVRScene
         if (bayRoot != null) UnityEngine.Object.DestroyImmediate(bayRoot);
         bayRoot = new GameObject("VRComparisonBay");
         bayRoot.transform.position = new Vector3(0f, 0.1f, -6.8f);
-        // CRITICAL: Euler(0, 180, 0) faces forward into the room so text is never backwards!
-        bayRoot.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+        // Canvas faces into the room towards +Z so text reads normally from left to right
+        bayRoot.transform.rotation = Quaternion.identity;
 
         VRComparisonBay bay = bayRoot.AddComponent<VRComparisonBay>();
         bay.leftPedestalMount = leftPed.transform;

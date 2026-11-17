@@ -98,7 +98,7 @@ namespace ImmersiveAnatomy.VR
                 }
                 else if (VRComparisonBay.Instance != null)
                 {
-                    transform.position = leftPed.position + Vector3.up * 0.18f;
+                    transform.position = new Vector3(leftPed.position.x, 1.35f, leftPed.position.z);
                     organRigidbody.linearVelocity = Vector3.zero;
                     organRigidbody.angularVelocity = Vector3.zero;
                     organRigidbody.isKinematic = true;
@@ -114,7 +114,7 @@ namespace ImmersiveAnatomy.VR
                 }
                 else if (VRComparisonBay.Instance != null)
                 {
-                    transform.position = rightPed.position + Vector3.up * 0.18f;
+                    transform.position = new Vector3(rightPed.position.x, 1.35f, rightPed.position.z);
                     organRigidbody.linearVelocity = Vector3.zero;
                     organRigidbody.angularVelocity = Vector3.zero;
                     organRigidbody.isKinematic = true;
@@ -196,7 +196,7 @@ namespace ImmersiveAnatomy.VR
                     }
                     else if (VRComparisonBay.Instance != null)
                     {
-                        transform.position = leftPed.position + Vector3.up * 0.18f;
+                        transform.position = new Vector3(leftPed.position.x, 1.35f, leftPed.position.z);
                         organRigidbody.linearVelocity = Vector3.zero;
                         organRigidbody.angularVelocity = Vector3.zero;
                         organRigidbody.isKinematic = true;
@@ -211,7 +211,7 @@ namespace ImmersiveAnatomy.VR
                     }
                     else if (VRComparisonBay.Instance != null)
                     {
-                        transform.position = rightPed.position + Vector3.up * 0.18f;
+                        transform.position = new Vector3(rightPed.position.x, 1.35f, rightPed.position.z);
                         organRigidbody.linearVelocity = Vector3.zero;
                         organRigidbody.angularVelocity = Vector3.zero;
                         organRigidbody.isKinematic = true;
