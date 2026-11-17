@@ -36,5 +36,9 @@ scratch/
 .utmp/
 Assets/Resources/
 Assets/Resources.meta
+*.keystore
+*.jks
+secrets/
+.env
 
 

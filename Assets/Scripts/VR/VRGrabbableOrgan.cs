@@ -73,6 +73,18 @@ namespace ImmersiveAnatomy.VR
             }
         }
 
+        public override bool IsSelectableBy(UnityEngine.XR.Interaction.Toolkit.Interactors.IXRSelectInteractor interactor)
+        {
+            if (interactor == null) return false;
+            // Prevent accidental physical hand/grip proximity selection - deliberate ray pointer selection only
+            string typeName = interactor.GetType().Name;
+            if (typeName.Contains("Direct") || typeName.Contains("Near") || typeName.Contains("Poke") || typeName.Contains("Grip"))
+            {
+                return false;
+            }
+            return base.IsSelectableBy(interactor);
+        }
+
         public void ForceReleaseGrab()
         {
             // No-op for non-grab simple interactable; deselect if actively selected
