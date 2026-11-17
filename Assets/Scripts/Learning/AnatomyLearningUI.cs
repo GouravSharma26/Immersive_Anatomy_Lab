@@ -85,74 +85,12 @@ namespace ImmersiveAnatomy.Learning
 
         private void OnGUI()
         {
-            if (!isLearningUIOpen) return;
-            string activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-            if (activeScene.IndexOf("VR", System.StringComparison.OrdinalIgnoreCase) >= 0) return;
-
-            int modalW = 540;
-            int modalH = 490;
-            int modalX = 260; // Cleanly positioned to the right of the left interactive controls panel
-            int modalY = 62;
-
-            // Main Background Panel (Labster clinical medical card style with solid backdrop)
-            GUI.DrawTexture(new Rect(modalX, modalY, modalW, modalH), GetBgTexture());
-            GUI.Box(new Rect(modalX, modalY, modalW, modalH), "");
-
-            // Header Ribbon
-            GUI.Box(new Rect(modalX, modalY, modalW, 40), "");
-            GUI.Label(new Rect(modalX + 15, modalY + 10, 360, 24), "<b>CLINICAL LEARNING & AI TUTOR SYSTEM</b>");
-
-            if (GUI.Button(new Rect(modalX + modalW - 90, modalY + 8, 75, 24), "Close [L]"))
-            {
-                ToggleLearningUI();
-                return;
-            }
-
-            // Tab Navigation
-            int tabW = (modalW - 30) / 4;
-            string[] tabNames = new string[] { "Anatomy Quiz", "Clinical Cases", "AI Tutor", "Analytics" };
-            for (int i = 0; i < tabNames.Length; i++)
-            {
-                bool isSelected = (activeTab == (LearningTab)i);
-                string label = isSelected ? $"<b><color=#00E5FF>{tabNames[i]}</color></b>" : tabNames[i];
-                if (GUI.Button(new Rect(modalX + 15 + i * tabW, modalY + 46, tabW, 26), label))
-                {
-                    activeTab = (LearningTab)i;
-                    if (activeTab == LearningTab.Quiz && quizEngine != null && quizEngine.State == QuizState.Idle)
-                    {
-                        quizEngine.StartQuizSession(5);
-                    }
-                    else if (activeTab == LearningTab.ClinicalCases && quizEngine != null && quizEngine.State != QuizState.ClinicalCaseActive && quizEngine.State != QuizState.CaseFeedback)
-                    {
-                        quizEngine.StartClinicalCase(0);
-                    }
-                }
-            }
-
-            // Separator
-            GUI.Box(new Rect(modalX + 15, modalY + 76, modalW - 30, 2), "");
-
-            // TAB CONTENT
-            Rect contentRect = new Rect(modalX + 15, modalY + 84, modalW - 30, modalH - 95);
-
-            switch (activeTab)
-            {
-                case LearningTab.Quiz:
-                    RenderQuizTab(contentRect);
-                    break;
-                case LearningTab.ClinicalCases:
-                    RenderClinicalCasesTab(contentRect);
-                    break;
-                case LearningTab.AITutor:
-                    RenderAITutorTab(contentRect);
-                    break;
-                case LearningTab.Analytics:
-                    RenderAnalyticsTab(contentRect);
-                    break;
-            }
+            // Modal display is disabled in favor of the clean docked left area in AnatomyInteraction
+            // so the 3D body mannequin remains completely unobstructed in the center.
+            return;
         }
 
-        private void RenderQuizTab(Rect r)
+        public void RenderQuizTab(Rect r)
         {
             if (quizEngine == null) return;
 
@@ -254,7 +192,7 @@ namespace ImmersiveAnatomy.Learning
             }
         }
 
-        private void RenderClinicalCasesTab(Rect r)
+        public void RenderClinicalCasesTab(Rect r)
         {
             if (quizEngine == null) return;
 
@@ -293,7 +231,7 @@ namespace ImmersiveAnatomy.Learning
             }
         }
 
-        private void RenderAITutorTab(Rect r)
+        public void RenderAITutorTab(Rect r)
         {
             if (aiTutor == null) return;
 

@@ -18,6 +18,17 @@ public class AnatomyInteraction : MonoBehaviour
     [Header("Display Settings")]
     public bool showDesktopHUD = true;
 
+    public enum LabArea
+    {
+        Exploration = 0,
+        Quiz = 1,
+        ClinicalCases = 2,
+        AITutor = 3
+    }
+
+    [Header("Active Lab Area")]
+    public LabArea currentArea = LabArea.Exploration;
+
     private OrganInteractable hoveredOrgan;
     private OrganInteractable selectedOrgan;
 
@@ -130,10 +141,14 @@ public class AnatomyInteraction : MonoBehaviour
 
     private void HandleKeyboardShortcuts()
     {
-        // Learning Mode: L
+        // Quick Area Switch: L key toggles between Exploration and Quiz
         if (Input.GetKeyDown(KeyCode.L))
         {
-            if (learningUI != null) learningUI.ToggleLearningUI();
+            currentArea = (currentArea == LabArea.Quiz) ? LabArea.Exploration : LabArea.Quiz;
+            if (currentArea == LabArea.Quiz && learningUI != null && learningUI.quizEngine != null && learningUI.quizEngine.State == ImmersiveAnatomy.Learning.QuizState.Idle)
+            {
+                learningUI.quizEngine.StartQuizSession(5);
+            }
         }
         // 1-6 Body System visibility
         if (BodySystemManager.Instance != null)
@@ -237,88 +252,144 @@ public class AnatomyInteraction : MonoBehaviour
     private void OnGUI()
     {
         if (!showDesktopHUD) return;
-        string activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-        if (activeScene.IndexOf("VR", System.StringComparison.OrdinalIgnoreCase) >= 0) return;
 
-        // 1. TOP HEADER BANNER
-        GUI.Box(new Rect(15, 12, Screen.width - 30, 42), "");
-        GUI.Label(new Rect(25, 22, 590, 24), "<b>IMMERSIVE ANATOMY LAB</b>  |  Phase 5 Intelligent AI Anatomy Assistant (LLM + RAG + TTS)");
+        // 1. TOP HEADER BANNER WITH DEDICATED AREA TABS
+        GUI.Box(new Rect(15, 10, Screen.width - 30, 46), "");
+        GUI.Label(new Rect(25, 20, 200, 24), "<b>IMMERSIVE ANATOMY LAB</b>");
 
-        string modeStatus = "<color=#00E5FF>EXPLORATION</color>";
-        if (learningUI != null && learningUI.isLearningUIOpen)
-            modeStatus = "<color=#00FF88>CLINICAL QUIZ & AI TUTOR</color>";
-        else if (cameraInspectionController != null && cameraInspectionController.IsFocusMode)
-            modeStatus = "<color=#33FF88>CAMERA FOCUS & ORBIT MODE</color>";
-        else if (explodedViewController != null && explodedViewController.IsExploded)
-            modeStatus = "<color=#FF9900>EXPLODED ANATOMY VIEW</color>";
-        else if (isolationController != null && isolationController.IsInIsolationMode)
-            modeStatus = "<color=#FFCC00>ORGAN ISOLATION MODE</color>";
-        else if (comparisonController != null && comparisonController.IsInComparisonMode)
-            modeStatus = "<color=#CC44FF>ORGAN COMPARISON MODE</color>";
-        else if (xrayViewController != null && xrayViewController.IsXRayActive)
-            modeStatus = "<color=#00FFFF>X-RAY FLUOROSCOPY MODE</color>";
-
-        GUI.Label(new Rect(Screen.width - 350, 22, 330, 24), $"<b>ACTIVE MODE:</b> {modeStatus}");
-
-        // 2. LEFT PANEL: ANATOMICAL SYSTEMS & ADVANCED VIEW MODES
-        GUI.Box(new Rect(15, 62, 230, 435), "<b>INTERACTIVE CONTROLS</b>");
-        
-        // System Visibility Toggles
-        if (BodySystemManager.Instance != null)
+        // Clean Area Switcher Tabs across Top
+        int tabStartX = 230;
+        int tabW = 160;
+        string[] areaTabs = new string[] { "[1] Systems & View", "[2] Quiz Area", "[3] Clinical Cases", "[4] Dr. Nova AI" };
+        for (int i = 0; i < areaTabs.Length; i++)
         {
-            GUI.Label(new Rect(25, 86, 210, 20), "<b>Body Systems Visibility:</b>");
-            string[] sysKeys = new string[] { "Body", "Skeletal", "Cardiovascular", "Respiratory", "Nervous", "Digestive" };
-            string[] sysNums = new string[] { "[6]", "[1]", "[2]", "[3]", "[4]", "[5]" };
-            for (int i = 0; i < sysKeys.Length; i++)
+            bool isCurrent = ((int)currentArea == i);
+            string tabLabel = isCurrent ? $"<b><color=#00FFAA>{areaTabs[i]}</color></b>" : areaTabs[i];
+            if (GUI.Button(new Rect(tabStartX + i * (tabW + 6), 16, tabW, 32), tabLabel))
             {
-                bool isVis = BodySystemManager.Instance.IsSystemVisible(sysKeys[i]);
-                string label = $"{sysNums[i]} {sysKeys[i]}: {(isVis ? "<color=#00FF88>ON</color>" : "<color=#FF4444>OFF</color>")}";
-                if (GUI.Button(new Rect(25, 108 + i * 26, 210, 22), label))
+                currentArea = (LabArea)i;
+                if (currentArea == LabArea.Quiz && learningUI != null && learningUI.quizEngine != null && learningUI.quizEngine.State == ImmersiveAnatomy.Learning.QuizState.Idle)
                 {
-                    BodySystemManager.Instance.ToggleSystem(sysKeys[i]);
+                    learningUI.quizEngine.StartQuizSession(5);
+                }
+                else if (currentArea == LabArea.ClinicalCases && learningUI != null && learningUI.quizEngine != null)
+                {
+                    learningUI.quizEngine.StartClinicalCase(0);
                 }
             }
         }
 
-        // View Mode Toggles
-        GUI.Label(new Rect(25, 272, 210, 20), "<b>Advanced View Modes:</b>");
-        
-        // Exploded View Button
-        bool isExp = explodedViewController != null && explodedViewController.IsExploded;
-        string expText = isExp ? "Assemble Anatomy [X]" : "Exploded View [X]";
-        if (GUI.Button(new Rect(25, 294, 210, 24), expText))
-        {
-            if (explodedViewController != null) explodedViewController.ToggleExplodedView();
-        }
+        string modeStatus = "<color=#00E5FF>EXPLORATION</color>";
+        if (currentArea == LabArea.Quiz)
+            modeStatus = "<color=#00FF88>QUIZ ACTIVE</color>";
+        else if (currentArea == LabArea.ClinicalCases)
+            modeStatus = "<color=#FFCC00>CLINICAL CASE</color>";
+        else if (currentArea == LabArea.AITutor)
+            modeStatus = "<color=#00FFFF>DR. NOVA AI</color>";
+        else if (cameraInspectionController != null && cameraInspectionController.IsFocusMode)
+            modeStatus = "<color=#33FF88>CAMERA FOCUS</color>";
+        else if (explodedViewController != null && explodedViewController.IsExploded)
+            modeStatus = "<color=#FF9900>EXPLODED VIEW</color>";
+        else if (isolationController != null && isolationController.IsInIsolationMode)
+            modeStatus = "<color=#FFCC00>ORGAN ISOLATED</color>";
+        else if (comparisonController != null && comparisonController.IsInComparisonMode)
+            modeStatus = "<color=#CC44FF>ORGAN COMPARISON</color>";
+        else if (xrayViewController != null && xrayViewController.IsXRayActive)
+            modeStatus = "<color=#00FFFF>X-RAY FLUOROSCOPY</color>";
 
-        // X-Ray Mode Button
-        bool isXRay = xrayViewController != null && xrayViewController.IsXRayActive;
-        string xrayText = isXRay ? "Disable X-Ray [Z]" : "X-Ray Mode [Z]";
-        if (GUI.Button(new Rect(25, 322, 210, 24), xrayText))
-        {
-            if (xrayViewController != null) xrayViewController.ToggleXRay();
-        }
+        GUI.Label(new Rect(Screen.width - 240, 22, 220, 24), $"<b>ACTIVE:</b> {modeStatus}");
 
-        // Comparison Mode Button
-        bool isComp = comparisonController != null && comparisonController.IsInComparisonMode;
-        string compText = isComp ? "Exit Comparison [C]" : "Compare Organs [C]";
-        if (GUI.Button(new Rect(25, 350, 210, 24), compText))
-        {
-            if (comparisonController != null) comparisonController.ToggleComparisonMode(selectedOrgan);
-        }
+        // 2. DEDICATED LEFT PANEL (Cleanly docked on left, keeping center 3D body 100% visible)
+        int leftW = 360;
+        int leftH = Screen.height - 120;
+        Rect leftRect = new Rect(15, 62, leftW, leftH);
 
-        // Learning Mode Button
-        bool isLearn = learningUI != null && learningUI.isLearningUIOpen;
-        string learnText = isLearn ? "Exit Learning [L]" : "<b>Quiz & AI Tutor [L]</b>";
-        if (GUI.Button(new Rect(25, 378, 210, 24), learnText))
+        if (currentArea == LabArea.Exploration)
         {
-            if (learningUI != null) learningUI.ToggleLearningUI();
-        }
+            GUI.Box(leftRect, "<b>ANATOMICAL SYSTEMS & MODES</b>");
 
-        // Reset Anatomy Button
-        if (GUI.Button(new Rect(25, 406, 210, 24), "RESET ANATOMY [R]"))
+            // System Visibility Toggles
+            if (BodySystemManager.Instance != null)
+            {
+                GUI.Label(new Rect(25, 90, leftW - 20, 20), "<b>Body Systems Visibility:</b>");
+                string[] sysKeys = new string[] { "Body", "Skeletal", "Cardiovascular", "Respiratory", "Nervous", "Digestive" };
+                string[] sysNums = new string[] { "[6]", "[1]", "[2]", "[3]", "[4]", "[5]" };
+                for (int i = 0; i < sysKeys.Length; i++)
+                {
+                    bool isVis = BodySystemManager.Instance.IsSystemVisible(sysKeys[i]);
+                    string label = $"{sysNums[i]} {sysKeys[i]}: {(isVis ? "<color=#00FF88>ON</color>" : "<color=#FF4444>OFF</color>")}";
+                    if (GUI.Button(new Rect(25, 114 + i * 27, leftW - 20, 23), label))
+                    {
+                        BodySystemManager.Instance.ToggleSystem(sysKeys[i]);
+                    }
+                }
+
+                if (GUI.Button(new Rect(25, 114 + 6 * 27, (leftW - 30) / 2, 23), "Show All"))
+                {
+                    BodySystemManager.Instance.ShowAllSystems();
+                }
+                if (GUI.Button(new Rect(25 + (leftW - 30) / 2 + 10, 114 + 6 * 27, (leftW - 30) / 2, 23), "Hide All"))
+                {
+                    BodySystemManager.Instance.HideAllSystems();
+                }
+            }
+
+            // Advanced View Modes
+            int viewY = 320;
+            GUI.Label(new Rect(25, viewY, leftW - 20, 20), "<b>Advanced View Modes:</b>");
+
+            bool isExp = explodedViewController != null && explodedViewController.IsExploded;
+            string expText = isExp ? "Assemble Anatomy [X]" : "Exploded View [X]";
+            if (GUI.Button(new Rect(25, viewY + 24, leftW - 20, 25), expText))
+            {
+                if (explodedViewController != null) explodedViewController.ToggleExplodedView();
+            }
+
+            bool isXRay = xrayViewController != null && xrayViewController.IsXRayActive;
+            string xrayText = isXRay ? "Disable X-Ray [Z]" : "X-Ray Mode [Z]";
+            if (GUI.Button(new Rect(25, viewY + 52, leftW - 20, 25), xrayText))
+            {
+                if (xrayViewController != null) xrayViewController.ToggleXRay();
+            }
+
+            bool isComp = comparisonController != null && comparisonController.IsInComparisonMode;
+            string compText = isComp ? "Exit Comparison [C]" : "Compare Organs [C]";
+            if (GUI.Button(new Rect(25, viewY + 80, leftW - 20, 25), compText))
+            {
+                if (comparisonController != null) comparisonController.ToggleComparisonMode(selectedOrgan);
+            }
+
+            if (GUI.Button(new Rect(25, viewY + 108, leftW - 20, 25), "RESET ANATOMY [R]"))
+            {
+                ResetAllAnatomy();
+            }
+        }
+        else if (currentArea == LabArea.Quiz)
         {
-            ResetAllAnatomy();
+            GUI.Box(leftRect, "<b>CLINICAL ANATOMY QUIZ AREA</b>");
+            if (learningUI != null)
+            {
+                Rect quizInnerRect = new Rect(25, 90, leftW - 20, leftH - 40);
+                learningUI.RenderQuizTab(quizInnerRect);
+            }
+        }
+        else if (currentArea == LabArea.ClinicalCases)
+        {
+            GUI.Box(leftRect, "<b>PATIENT CASE SIMULATION</b>");
+            if (learningUI != null)
+            {
+                Rect caseInnerRect = new Rect(25, 90, leftW - 20, leftH - 40);
+                learningUI.RenderClinicalCasesTab(caseInnerRect);
+            }
+        }
+        else if (currentArea == LabArea.AITutor)
+        {
+            GUI.Box(leftRect, "<b>DR. NOVA (AI CLINICAL TUTOR)</b>");
+            if (learningUI != null)
+            {
+                Rect tutorInnerRect = new Rect(25, 90, leftW - 20, leftH - 40);
+                learningUI.RenderAITutorTab(tutorInnerRect);
+            }
         }
 
         // 3. RIGHT PANEL: CLINICAL INSPECTOR OR COMPARISON MATRIX
@@ -411,11 +482,11 @@ public class AnatomyInteraction : MonoBehaviour
                     }
                 }
 
-                if (GUI.Button(new Rect(rightX + 15, 394, rightW - 30, 26), "Ask AI Tutor About Organ"))
+                if (GUI.Button(new Rect(rightX + 15, 394, rightW - 30, 26), "Ask Dr. Nova About Organ"))
                 {
+                    currentArea = LabArea.AITutor;
                     if (learningUI != null)
                     {
-                        learningUI.isLearningUIOpen = true;
                         learningUI.activeTab = ImmersiveAnatomy.Learning.LearningTab.AITutor;
                         learningUI.NotifyOrganSelected(selectedOrgan);
                     }
