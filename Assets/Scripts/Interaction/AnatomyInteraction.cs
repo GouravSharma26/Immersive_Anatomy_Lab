@@ -950,14 +950,24 @@ public class AnatomyInteraction : MonoBehaviour
                 if (xrayViewController != null) xrayViewController.ToggleThoracicMode();
             }
 
+            int extraOffset = 0;
+            if (xrayViewController != null && xrayViewController.CurrentMode != XRayViewController.MedicalVisualizationMode.Normal)
+            {
+                if (GUI.Button(new Rect(25, viewY + 136, leftW - 20, 25), "<b><color=#00FFAA>➔ Restore Normal PBR View [0]</color></b>"))
+                {
+                    xrayViewController.ResetToNormal();
+                }
+                extraOffset = 28;
+            }
+
             bool isComp = comparisonController != null && comparisonController.IsInComparisonMode;
             string compText = isComp ? "Exit Comparison [C]" : "Compare Organs [C]";
-            if (GUI.Button(new Rect(25, viewY + 136, leftW - 20, 25), compText))
+            if (GUI.Button(new Rect(25, viewY + 136 + extraOffset, leftW - 20, 25), compText))
             {
                 if (comparisonController != null) comparisonController.ToggleComparisonMode(selectedOrgan);
             }
 
-            if (GUI.Button(new Rect(25, viewY + 164, leftW - 20, 25), "RESET ANATOMY [R]"))
+            if (GUI.Button(new Rect(25, viewY + 164 + extraOffset, leftW - 20, 25), "RESET ANATOMY [R]"))
             {
                 ResetAllAnatomy();
             }
@@ -1235,7 +1245,7 @@ public class AnatomyInteraction : MonoBehaviour
         string cursorStatus = Cursor.visible ? "<color=#FFCC00>Visible</color>" : "<color=#00FFAA>Hidden</color>";
         string handsStatus = showVRHands ? "<color=#00FFAA>ON</color>" : "<color=#888888>OFF</color>";
         string tutorHint = (currentArea == LabArea.AITutor) ? " | <color=#00FFAA><b>[T] / [Enter] Ask Dr. Nova AI</b></color>" : "";
-        string hint = $"<b>Controls:</b> WASD Move | Mouse Look | Left-Click Select / Snap | Q/E Rotate | F Focus | C Compare | <b>Panels [H]</b> | <b>VR Hands: {handsStatus} [V]</b> | <b>Cursor [{cursorStatus} - Esc]</b>{tutorHint}";
+        string hint = $"<b>Controls:</b> WASD Move | Mouse Look | Left-Click Select / Snap | Q/E Rotate | F Focus | C Compare | [8] Vascular | [9] Thoracic | [Z] X-Ray | [0] Normal | Panels [H] | VR Hands: {handsStatus} [V] | Cursor [{cursorStatus} - Esc]{tutorHint}";
         GUI.Label(new Rect(25, Screen.height - 39, Screen.width - 50, 24), hint);
     }
 }

@@ -33,6 +33,8 @@ public class XRayViewController : MonoBehaviour
     public bool IsXRayActive { get; private set; }
     public MedicalVisualizationMode CurrentMode { get; private set; } = MedicalVisualizationMode.Normal;
 
+    public event System.Action<MedicalVisualizationMode> OnModeChanged;
+
     private class RendererCache
     {
         public Renderer renderer;
@@ -220,6 +222,7 @@ public class XRayViewController : MonoBehaviour
 
         CurrentMode = mode;
         IsXRayActive = (mode == MedicalVisualizationMode.XRay || mode == MedicalVisualizationMode.FluoroscopySweep);
+        OnModeChanged?.Invoke(mode);
 
         switch (mode)
         {
