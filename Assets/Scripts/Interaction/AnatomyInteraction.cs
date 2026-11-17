@@ -87,55 +87,129 @@ public class AnatomyInteraction : MonoBehaviour
         }
     }
 
+    private AudioSource interactionAudioSource;
+
+    private void PlaySelectTone(float frequency = 880f, float duration = 0.12f)
+    {
+        if (interactionAudioSource == null)
+        {
+            interactionAudioSource = GetComponent<AudioSource>();
+            if (interactionAudioSource == null) interactionAudioSource = gameObject.AddComponent<AudioSource>();
+            interactionAudioSource.playOnAwake = false;
+        }
+        int sampleRate = 44100;
+        int sampleCount = (int)(sampleRate * duration);
+        float[] samples = new float[sampleCount];
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float t = (float)i / sampleRate;
+            float envelope = Mathf.Sin(Mathf.PI * (t / duration));
+            samples[i] = Mathf.Sin(2f * Mathf.PI * frequency * t) * envelope * 0.35f;
+        }
+        AudioClip clip = AudioClip.Create("OrganSelectChime", sampleCount, 1, sampleRate, false);
+        clip.SetData(samples, 0);
+        interactionAudioSource.PlayOneShot(clip);
+    }
+
     private void HandleRaycastHover()
     {
+        if (playerCamera == null) playerCamera = Camera.main;
         if (playerCamera == null) return;
 
-        Ray ray = playerCamera.ScreenPointToRay(new Vector3(Screen.width / 2f, Screen.height / 2f, 0));
-        if (Physics.Raycast(ray, out RaycastHit hit, interactionDistance))
+        Vector2 mousePos = Input.mousePosition;
+        // Check if mouse is hovering over docked UI panels (left, right, top tabs, bottom bar)
+        bool overLeftUI = mousePos.x < 380 && mousePos.y > 55 && mousePos.y < Screen.height - 55;
+        bool overRightUI = mousePos.x > Screen.width - 380 && mousePos.y > 55 && mousePos.y < Screen.height - 55;
+        bool overTopTabs = mousePos.y >= Screen.height - 55;
+        bool overBottomBar = mousePos.y <= 55;
+
+        Ray ray;
+        // If mouse is within main central 3D viewport, raycast directly from mouse cursor!
+        if (!overLeftUI && !overRightUI && !overTopTabs && !overBottomBar &&
+            mousePos.x >= 0 && mousePos.x <= Screen.width && mousePos.y >= 0 && mousePos.y <= Screen.height)
         {
-            OrganInteractable organ = hit.collider.GetComponentInParent<OrganInteractable>();
-            if (organ != hoveredOrgan)
-            {
-                if (hoveredOrgan != null && highlighter != null) highlighter.OnHoverExit(hoveredOrgan);
-                hoveredOrgan = organ;
-                if (hoveredOrgan != null && highlighter != null) highlighter.OnHoverEnter(hoveredOrgan);
-            }
+            ray = playerCamera.ScreenPointToRay(mousePos);
         }
         else
         {
-            if (hoveredOrgan != null)
+            // Center crosshair fallback
+            ray = playerCamera.ScreenPointToRay(new Vector3(Screen.width / 2f, Screen.height / 2f, 0));
+        }
+
+        RaycastHit[] hits = Physics.RaycastAll(ray, interactionDistance);
+        OrganInteractable foundOrgan = null;
+        float bestDist = float.MaxValue;
+
+        foreach (var hit in hits)
+        {
+            if (hit.collider == null || hit.collider.isTrigger) continue;
+            OrganInteractable organ = hit.collider.GetComponentInParent<OrganInteractable>();
+            if (organ != null)
             {
-                if (highlighter != null) highlighter.OnHoverExit(hoveredOrgan);
-                hoveredOrgan = null;
+                // Prefer internal organs over external body silhouette
+                bool isBodyShell = organ.organName.IndexOf("Body", System.StringComparison.OrdinalIgnoreCase) >= 0;
+                float effectiveDist = hit.distance + (isBodyShell ? 2.5f : 0f);
+                if (effectiveDist < bestDist)
+                {
+                    bestDist = effectiveDist;
+                    foundOrgan = organ;
+                }
             }
+        }
+
+        if (foundOrgan != hoveredOrgan)
+        {
+            if (hoveredOrgan != null && highlighter != null) highlighter.OnHoverExit(hoveredOrgan);
+            hoveredOrgan = foundOrgan;
+            if (hoveredOrgan != null && highlighter != null) highlighter.OnHoverEnter(hoveredOrgan);
         }
     }
 
     private void HandleSelection()
     {
         Vector2 mousePos = Input.mousePosition;
-        // Don't select if clicking on GUI bounds
-        if (mousePos.x < 245 && mousePos.y > Screen.height - 450) return;
-        if (mousePos.x > Screen.width - 380 && mousePos.y > Screen.height - 490) return;
-        if (learningUI != null && learningUI.isLearningUIOpen)
-        {
-            if (mousePos.x >= 255 && mousePos.x <= 810 && mousePos.y > Screen.height - 565) return;
-        }
+        // Don't select if clicking on docked UI panels
+        if (mousePos.x < 380 && mousePos.y > 55 && mousePos.y < Screen.height - 55) return;
+        if (mousePos.x > Screen.width - 380 && mousePos.y > 55 && mousePos.y < Screen.height - 55) return;
+        if (mousePos.y >= Screen.height - 55 || mousePos.y <= 55) return;
 
         if (hoveredOrgan != null)
         {
-            if (comparisonController != null && comparisonController.IsInComparisonMode)
-            {
-                comparisonController.AddOrganToComparison(hoveredOrgan);
-                if (highlighter != null) highlighter.SelectOrgan(hoveredOrgan);
-                return;
-            }
+            SelectOrgan(hoveredOrgan);
+        }
+    }
 
-            selectedOrgan = hoveredOrgan;
-            selectedOrgan.ShowInformation();
-            if (highlighter != null) highlighter.SelectOrgan(selectedOrgan);
-            if (learningUI != null) learningUI.NotifyOrganSelected(selectedOrgan);
+    public void SelectOrgan(OrganInteractable organ)
+    {
+        if (organ == null) return;
+
+        selectedOrgan = organ;
+        selectedOrgan.ShowInformation();
+
+        PlaySelectTone(880f, 0.15f);
+
+        if (highlighter != null) highlighter.SelectOrgan(selectedOrgan);
+
+        // Forward to Comparison Mode if active
+        if (comparisonController != null && comparisonController.IsInComparisonMode)
+        {
+            comparisonController.AddOrganToComparison(selectedOrgan);
+            return;
+        }
+
+        // Forward to Quiz Engine if in Quiz or Clinical Cases mode
+        if (learningUI != null && learningUI.quizEngine != null)
+        {
+            if (currentArea == LabArea.Quiz || currentArea == LabArea.ClinicalCases)
+            {
+                learningUI.quizEngine.Submit3DOrganSelection(selectedOrgan);
+            }
+        }
+
+        // Forward to AI Tutor if in Teaching mode
+        if (learningUI != null)
+        {
+            learningUI.NotifyOrganSelected(selectedOrgan);
         }
     }
 
@@ -497,10 +571,28 @@ public class AnatomyInteraction : MonoBehaviour
                     ResetAllAnatomy();
                 }
             }
+            else if (hoveredOrgan != null)
+            {
+                // LIVE HOVER PREVIEW: Shows organ identity in real-time before clicking!
+                GUI.Label(new Rect(rightX + 15, 90, rightW - 30, 22), $"<b>Targeting:</b> <color=#FFCC00>{hoveredOrgan.organName}</color>");
+                GUI.Label(new Rect(rightX + 15, 112, rightW - 30, 22), $"<b>System:</b> {hoveredOrgan.bodySystem}  |  <b>Mass:</b> {hoveredOrgan.normalWeight}g");
+                GUI.Label(new Rect(rightX + 15, 136, rightW - 30, 48), $"<b>Physiology:</b>\n{hoveredOrgan.description}");
+                GUI.Label(new Rect(rightX + 15, 188, rightW - 30, 42), $"<b>Blood Supply:</b> {hoveredOrgan.arterialSupply}");
+                GUI.Label(new Rect(rightX + 15, 234, rightW - 30, 42), $"<b>Innervation:</b> {hoveredOrgan.innervation}");
+                GUI.Label(new Rect(rightX + 15, 280, rightW - 30, 42), $"<b>Clinical Notes:</b> {hoveredOrgan.commonPathology}");
+
+                GUI.Box(new Rect(rightX + 15, 330, rightW - 30, 32), "");
+                GUI.Label(new Rect(rightX + 20, 336, rightW - 40, 22), "<color=#00FF88><b>➔ Left-Click to Select & Lock Organ</b></color>");
+
+                if (GUI.Button(new Rect(rightX + 15, 370, rightW - 30, 26), "Select This Organ"))
+                {
+                    SelectOrgan(hoveredOrgan);
+                }
+            }
             else
             {
                 GUI.Label(new Rect(rightX + 15, 105, rightW - 30, 24), "<i>No organ currently selected.</i>");
-                GUI.Label(new Rect(rightX + 15, 135, rightW - 30, 45), "Aim the center crosshair at any organ and click to inspect clinical anatomy.");
+                GUI.Label(new Rect(rightX + 15, 135, rightW - 30, 45), "Aim your cursor at any organ in the 3D model to inspect clinical anatomy.");
                 GUI.Label(new Rect(rightX + 15, 185, rightW - 30, 45), "Press <b>[X]</b> to trigger the <b>Exploded Anatomy View</b>, smoothly separating organs along physiological axes.");
                 GUI.Label(new Rect(rightX + 15, 240, rightW - 30, 45), "Press <b>[Z]</b> for <b>X-Ray Fluoroscopy</b> or <b>[C]</b> to compare two organs side-by-side.");
                 GUI.Label(new Rect(rightX + 15, 295, rightW - 30, 45), "Press <b>[F]</b> to focus camera and right-click drag to orbit/inspect closely.");
@@ -508,7 +600,42 @@ public class AnatomyInteraction : MonoBehaviour
             }
         }
 
-        // 4. BOTTOM CONTROLS QUICK BAR
+        // 4. FLOATING 3D HOVER TOOLTIP OVER HOVERED ORGAN
+        if (hoveredOrgan != null && playerCamera != null)
+        {
+            Vector3 worldPos = hoveredOrgan.transform.position + Vector3.up * 0.16f;
+            Vector3 screenPos = playerCamera.WorldToScreenPoint(worldPos);
+            if (screenPos.z > 0.1f)
+            {
+                float tagW = 220f;
+                float tagH = 50f;
+                float tagX = Mathf.Clamp(screenPos.x - tagW * 0.5f, 390f, Screen.width - 390f - tagW);
+                float tagY = Mathf.Clamp(Screen.height - screenPos.y - tagH - 10f, 70f, Screen.height - 90f);
+
+                GUI.Box(new Rect(tagX, tagY, tagW, tagH), "");
+                GUI.Label(new Rect(tagX + 5, tagY + 4, tagW - 10, 22), $"<b>{hoveredOrgan.organName.ToUpper()}</b>", new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold, normal = { textColor = new Color(0.2f, 1f, 0.9f) } });
+                GUI.Label(new Rect(tagX + 5, tagY + 26, tagW - 10, 18), $"<size=10>{hoveredOrgan.bodySystem} System | {hoveredOrgan.normalWeight:F0}g</size>", new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, normal = { textColor = Color.white } });
+            }
+        }
+
+        // 5. QUIZ 3D SPOTLIGHT BEACON
+        if (currentArea == LabArea.Quiz && learningUI != null && learningUI.quizEngine != null && learningUI.quizEngine.CurrentTargetOrgan != null && playerCamera != null)
+        {
+            Vector3 worldPos = learningUI.quizEngine.CurrentTargetOrgan.transform.position + Vector3.up * 0.28f;
+            Vector3 screenPos = playerCamera.WorldToScreenPoint(worldPos);
+            if (screenPos.z > 0.1f)
+            {
+                float tagW = 240f;
+                float tagH = 32f;
+                float tagX = Mathf.Clamp(screenPos.x - tagW * 0.5f, 390f, Screen.width - 390f - tagW);
+                float tagY = Mathf.Clamp(Screen.height - screenPos.y - tagH - 12f, 65f, Screen.height - 90f);
+
+                GUI.Box(new Rect(tagX, tagY, tagW, tagH), "");
+                GUI.Label(new Rect(tagX + 5, tagY + 6, tagW - 10, 20), "<b>★ IDENTIFY THIS ORGAN ★</b>", new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold, normal = { textColor = new Color(1f, 0.85f, 0.2f) } });
+            }
+        }
+
+        // 6. BOTTOM CONTROLS QUICK BAR
         GUI.Box(new Rect(15, Screen.height - 45, Screen.width - 30, 32), "");
         string hint = "<b>Phase 5 Controls:</b> WASD Move | Mouse Look | Click Select | Q/E Rotate | Scroll Zoom | F Focus/Orbit | L AI Tutor & Quiz | X Explode | Z X-Ray | C Compare | I Isolate | 1-6 Systems | R Reset";
         GUI.Label(new Rect(25, Screen.height - 39, Screen.width - 50, 24), hint);

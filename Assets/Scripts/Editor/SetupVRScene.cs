@@ -323,18 +323,23 @@ public class SetupVRScene
             rb.interpolation = RigidbodyInterpolation.Interpolate;
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
 
-            Collider col = go.GetComponent<Collider>();
-            if (col == null)
+            // Ensure every renderer has an exact convex collider
+            Renderer[] rends = go.GetComponentsInChildren<Renderer>();
+            foreach (var r in rends)
             {
-                MeshFilter mf = go.GetComponent<MeshFilter>();
-                if (mf != null && mf.sharedMesh != null)
+                Collider c = r.GetComponent<Collider>();
+                if (c == null)
                 {
-                    MeshCollider mc = go.AddComponent<MeshCollider>();
-                    mc.convex = true;
-                }
-                else
-                {
-                    go.AddComponent<BoxCollider>();
+                    MeshFilter mf = r.GetComponent<MeshFilter>();
+                    if (mf != null && mf.sharedMesh != null)
+                    {
+                        MeshCollider mc = r.gameObject.AddComponent<MeshCollider>();
+                        mc.convex = true;
+                    }
+                    else
+                    {
+                        r.gameObject.AddComponent<BoxCollider>();
+                    }
                 }
             }
 
@@ -380,7 +385,7 @@ public class SetupVRScene
         Material tableMat = SetupLabScene.CreateMaterial("Lab", "VR_TableMat", new Color(0.1f, 0.14f, 0.2f), 0.9f, 0.4f, false, new Color(0f, 0.3f, 0.6f, 0.3f));
         table.GetComponent<Renderer>().sharedMaterial = tableMat;
 
-        // Position Anatomy Model directly onto table
+        // Position Anatomy Model directly onto table (clean, unobstructed 360-degree view)
         GameObject anatomy = GameObject.Find("Anatomy");
         if (anatomy != null)
         {
@@ -388,65 +393,12 @@ public class SetupVRScene
             anatomy.transform.rotation = Quaternion.identity;
         }
 
-        // 2. Tabletop Console (Mounted on front edge of table, tilted 35 degrees)
+        // Clean up any old floating console slabs or organ cards that obstructed the view
         GameObject consoleRoot = GameObject.Find("DissectionTableConsole");
         if (consoleRoot != null) UnityEngine.Object.DestroyImmediate(consoleRoot);
-        consoleRoot = new GameObject("DissectionTableConsole");
-        consoleRoot.transform.position = new Vector3(0f, 0.95f, 0.85f);
-        consoleRoot.transform.rotation = Quaternion.Euler(35f, 0f, 0f);
 
-        Font font = GetLabFont();
-
-        // Console Canvas (1100 x 500 px -> 1.1m x 0.5m)
-        GameObject canvasGO = CreateWorldCanvas("ConsoleCanvas", consoleRoot.transform, Vector3.zero, Quaternion.identity, new Vector2(1100f, 480f), 0.001f);
-        CreateImage("ConsoleBG", canvasGO.transform, Vector2.zero, new Vector2(1100f, 480f), new Color(0.05f, 0.08f, 0.14f, 0.95f));
-
-        // Console Header
-        CreateText("Title", canvasGO.transform, new Vector2(0f, 195f), new Vector2(1000f, 45f), "ANATOMICAL DISSECTION CONSOLE", font, 24, FontStyle.Bold, new Color(0.4f, 0.85f, 1f), TextAnchor.MiddleCenter);
-
-        VRDissectionTableConsole console = consoleRoot.AddComponent<VRDissectionTableConsole>();
-
-        // System Toggles Row
-        CreateText("SysLabel", canvasGO.transform, new Vector2(-420f, 135f), new Vector2(200f, 30f), "Body Systems:", font, 18, FontStyle.Bold, new Color(0.7f, 0.85f, 0.95f), TextAnchor.MiddleLeft);
-
-        console.skeletalBtn = CreateActionButton("BtnSkel", canvasGO.transform, new Vector2(-340f, 95f), new Vector2(150f, 44f), "Skeletal", font, 18, new Color(0.15f, 0.28f, 0.42f));
-        console.cardioBtn = CreateActionButton("BtnCardio", canvasGO.transform, new Vector2(-175f, 95f), new Vector2(150f, 44f), "Cardiovascular", font, 16, new Color(0.15f, 0.28f, 0.42f));
-        console.respBtn = CreateActionButton("BtnResp", canvasGO.transform, new Vector2(-10f, 95f), new Vector2(150f, 44f), "Respiratory", font, 18, new Color(0.15f, 0.28f, 0.42f));
-        console.nervousBtn = CreateActionButton("BtnNervous", canvasGO.transform, new Vector2(155f, 95f), new Vector2(150f, 44f), "Nervous", font, 18, new Color(0.15f, 0.28f, 0.42f));
-        console.digestiveBtn = CreateActionButton("BtnDigestive", canvasGO.transform, new Vector2(320f, 95f), new Vector2(150f, 44f), "Digestive", font, 18, new Color(0.15f, 0.28f, 0.42f));
-        console.showAllBtn = CreateActionButton("BtnShowAll", canvasGO.transform, new Vector2(465f, 95f), new Vector2(110f, 44f), "Show All", font, 17, new Color(0.12f, 0.45f, 0.35f));
-
-        // Spatial Modes Row
-        CreateText("ModesLabel", canvasGO.transform, new Vector2(-420f, 25f), new Vector2(200f, 30f), "Spatial Modes:", font, 18, FontStyle.Bold, new Color(0.7f, 0.85f, 0.95f), TextAnchor.MiddleLeft);
-
-        console.explodeBtn = CreateActionButton("BtnExplode", canvasGO.transform, new Vector2(-280f, -40f), new Vector2(240f, 55f), "Exploded View", font, 20, new Color(0.2f, 0.42f, 0.65f));
-        console.explodeBtnText = console.explodeBtn.GetComponentInChildren<Text>();
-
-        console.xrayBtn = CreateActionButton("BtnXRay", canvasGO.transform, new Vector2(0f, -40f), new Vector2(240f, 55f), "X-Ray Mode", font, 20, new Color(0.2f, 0.42f, 0.65f));
-        console.xrayBtnText = console.xrayBtn.GetComponentInChildren<Text>();
-
-        console.resetAnatomyBtn = CreateActionButton("BtnReset", canvasGO.transform, new Vector2(280f, -40f), new Vector2(240f, 55f), "Reset Anatomy", font, 20, new Color(0.65f, 0.22f, 0.22f));
-
-        CreateText("Tip", canvasGO.transform, new Vector2(0f, -170f), new Vector2(1000f, 40f), "<b>VR Grip:</b> Pick up organs to examine mid-air. Release near torso to magnetically snap into socket.", font, 16, FontStyle.Italic, new Color(0.5f, 0.75f, 0.9f), TextAnchor.MiddleCenter);
-
-        // 3. Holographic Organ Card (Side display at right edge of table)
         GameObject cardRoot = GameObject.Find("HolographicOrganCard");
         if (cardRoot != null) UnityEngine.Object.DestroyImmediate(cardRoot);
-        cardRoot = new GameObject("HolographicOrganCard");
-        cardRoot.transform.position = new Vector3(1.15f, 1.35f, 1.45f);
-        cardRoot.transform.rotation = Quaternion.Euler(15f, -28f, 0f);
-
-        GameObject cardCanvasGO = CreateWorldCanvas("CardCanvas", cardRoot.transform, Vector3.zero, Quaternion.identity, new Vector2(750f, 650f), 0.001f);
-        CreateImage("CardBG", cardCanvasGO.transform, Vector2.zero, new Vector2(750f, 650f), new Color(0.04f, 0.07f, 0.12f, 0.95f));
-
-        console.organCardRoot = cardRoot;
-        console.cardOrganNameText = CreateText("Name", cardCanvasGO.transform, new Vector2(0f, 265f), new Vector2(700f, 45f), "Central Anatomy Specimen", font, 26, FontStyle.Bold, new Color(0.95f, 0.85f, 0.3f), TextAnchor.MiddleLeft);
-        console.cardSystemText = CreateText("System", cardCanvasGO.transform, new Vector2(0f, 220f), new Vector2(700f, 35f), "Grab an organ to inspect live metrics.", font, 18, FontStyle.Normal, new Color(0.4f, 0.9f, 0.7f), TextAnchor.MiddleLeft);
-        console.cardPhysiologyText = CreateText("Phys", cardCanvasGO.transform, new Vector2(0f, 130f), new Vector2(700f, 110f), "<b>Physiology:</b> Primary functional organ metrics.", font, 17, FontStyle.Normal, Color.white, TextAnchor.UpperLeft);
-        console.cardVascularText = CreateText("Vasc", cardCanvasGO.transform, new Vector2(0f, 20f), new Vector2(700f, 85f), "<b>Blood Supply:</b> Arterial and venous conduits.", font, 17, FontStyle.Normal, new Color(0.85f, 0.92f, 1f), TextAnchor.UpperLeft);
-        console.cardPathologyText = CreateText("Path", cardCanvasGO.transform, new Vector2(0f, -85f), new Vector2(700f, 95f), "<b>Clinical Pathology:</b> Key clinical pearls & conditions.", font, 17, FontStyle.Normal, new Color(1f, 0.78f, 0.78f), TextAnchor.UpperLeft);
-
-        console.returnToSocketBtn = CreateActionButton("BtnSnapBack", cardCanvasGO.transform, new Vector2(0f, -240f), new Vector2(380f, 52f), "Snap Back to Anatomical Socket", font, 18, new Color(0.15f, 0.45f, 0.75f));
     }
 
     private static void SetupQuizKioskStation()
@@ -454,32 +406,16 @@ public class SetupVRScene
         GameObject kioskRoot = GameObject.Find("VRQuizStation");
         if (kioskRoot != null) UnityEngine.Object.DestroyImmediate(kioskRoot);
         kioskRoot = new GameObject("VRQuizStation");
-        kioskRoot.transform.position = new Vector3(-2.6f, 0f, 1.2f);
-        kioskRoot.transform.rotation = Quaternion.Euler(0f, 35f, 0f);
-
-        // Pedestal
-        GameObject pedestal = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        pedestal.name = "KioskPedestal";
-        pedestal.transform.SetParent(kioskRoot.transform, false);
-        pedestal.transform.localPosition = new Vector3(0f, 0.7f, 0f);
-        pedestal.transform.localScale = new Vector3(0.45f, 0.7f, 0.45f);
-        Material pedMat = SetupLabScene.CreateMaterial("Lab", "VR_KioskPedMat", new Color(0.08f, 0.12f, 0.18f), 0.85f, 0.5f, false, new Color(0f, 0.4f, 0.8f, 0.4f));
-        pedestal.GetComponent<Renderer>().sharedMaterial = pedMat;
-
-        // Terminal Screen Backplate
-        GameObject backplate = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        backplate.name = "KioskScreenBackplate";
-        backplate.transform.SetParent(kioskRoot.transform, false);
-        backplate.transform.localPosition = new Vector3(0f, 1.45f, 0f);
-        backplate.transform.localScale = new Vector3(1.35f, 1.15f, 0.05f);
-        backplate.GetComponent<Renderer>().sharedMaterial = pedMat;
+        // Wall-mounted on the left wall with clear sightline to central body
+        kioskRoot.transform.position = new Vector3(-6.2f, 0.2f, 1.4f);
+        kioskRoot.transform.rotation = Quaternion.Euler(0f, 75f, 0f);
 
         Font font = GetLabFont();
         VRQuizStation station = kioskRoot.AddComponent<VRQuizStation>();
 
-        // Screen Canvas (1300 x 1100 px)
-        GameObject canvasGO = CreateWorldCanvas("KioskCanvas", kioskRoot.transform, new Vector3(0f, 1.45f, -0.03f), Quaternion.identity, new Vector2(1300f, 1100f), 0.001f);
-        CreateImage("ScreenBG", canvasGO.transform, Vector2.zero, new Vector2(1300f, 1100f), new Color(0.04f, 0.07f, 0.12f, 0.98f));
+        // Screen Canvas (1300 x 1100 px -> 1.3m x 1.1m)
+        GameObject canvasGO = CreateWorldCanvas("KioskCanvas", kioskRoot.transform, new Vector3(0f, 1.45f, 0f), Quaternion.identity, new Vector2(1300f, 1100f), 0.001f);
+        CreateImage("ScreenBG", canvasGO.transform, Vector2.zero, new Vector2(1300f, 1100f), new Color(0.04f, 0.07f, 0.12f, 0.95f));
 
         // Top Header
         CreateImage("TopBar", canvasGO.transform, new Vector2(0f, 500f), new Vector2(1260f, 75f), new Color(0.08f, 0.15f, 0.25f, 1f));
@@ -551,32 +487,16 @@ public class SetupVRScene
         GameObject podRoot = GameObject.Find("VRAINovaPod");
         if (podRoot != null) UnityEngine.Object.DestroyImmediate(podRoot);
         podRoot = new GameObject("VRAINovaPod");
-        podRoot.transform.position = new Vector3(2.6f, 0f, 1.2f);
-        podRoot.transform.rotation = Quaternion.Euler(0f, -35f, 0f);
-
-        // Pedestal
-        GameObject pedestal = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        pedestal.name = "AIPodPedestal";
-        pedestal.transform.SetParent(podRoot.transform, false);
-        pedestal.transform.localPosition = new Vector3(0f, 0.7f, 0f);
-        pedestal.transform.localScale = new Vector3(0.45f, 0.7f, 0.45f);
-        Material pedMat = SetupLabScene.CreateMaterial("Lab", "VR_AIPodPedMat", new Color(0.08f, 0.14f, 0.16f), 0.85f, 0.5f, false, new Color(0f, 0.6f, 0.4f, 0.4f));
-        pedestal.GetComponent<Renderer>().sharedMaterial = pedMat;
-
-        // Terminal Screen Backplate
-        GameObject backplate = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        backplate.name = "AIScreenBackplate";
-        backplate.transform.SetParent(podRoot.transform, false);
-        backplate.transform.localPosition = new Vector3(0f, 1.45f, 0f);
-        backplate.transform.localScale = new Vector3(1.35f, 1.15f, 0.05f);
-        backplate.GetComponent<Renderer>().sharedMaterial = pedMat;
+        // Wall-mounted on the right wall with clear sightline to central body
+        podRoot.transform.position = new Vector3(6.2f, 0.2f, 1.4f);
+        podRoot.transform.rotation = Quaternion.Euler(0f, -75f, 0f);
 
         Font font = GetLabFont();
         VRAINovaPod pod = podRoot.AddComponent<VRAINovaPod>();
 
-        // Screen Canvas (1300 x 1100 px)
-        GameObject canvasGO = CreateWorldCanvas("AICanvas", podRoot.transform, new Vector3(0f, 1.45f, -0.03f), Quaternion.identity, new Vector2(1300f, 1100f), 0.001f);
-        CreateImage("ScreenBG", canvasGO.transform, Vector2.zero, new Vector2(1300f, 1100f), new Color(0.04f, 0.08f, 0.1f, 0.98f));
+        // Screen Canvas (1300 x 1100 px -> 1.3m x 1.1m)
+        GameObject canvasGO = CreateWorldCanvas("AICanvas", podRoot.transform, new Vector3(0f, 1.45f, 0f), Quaternion.identity, new Vector2(1300f, 1100f), 0.001f);
+        CreateImage("ScreenBG", canvasGO.transform, Vector2.zero, new Vector2(1300f, 1100f), new Color(0.04f, 0.08f, 0.1f, 0.95f));
 
         // Top Header
         CreateImage("TopBar", canvasGO.transform, new Vector2(0f, 500f), new Vector2(1260f, 75f), new Color(0.07f, 0.18f, 0.22f, 1f));
@@ -615,8 +535,9 @@ public class SetupVRScene
         GameObject bayRoot = GameObject.Find("VRComparisonBay");
         if (bayRoot != null) UnityEngine.Object.DestroyImmediate(bayRoot);
         bayRoot = new GameObject("VRComparisonBay");
-        bayRoot.transform.position = new Vector3(0f, 0f, -2.2f);
-        bayRoot.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+        // Mounted cleanly against the back wall (completely away from the central observation zone)
+        bayRoot.transform.position = new Vector3(0f, 0.1f, -6.8f);
+        bayRoot.transform.rotation = Quaternion.identity;
 
         Material leftPedMat = SetupLabScene.CreateMaterial("Lab", "VR_LeftPedMat", new Color(0.1f, 0.15f, 0.25f), 0.9f, 0.5f, false, new Color(0f, 0.6f, 1f, 0.6f));
         Material rightPedMat = SetupLabScene.CreateMaterial("Lab", "VR_RightPedMat", new Color(0.2f, 0.12f, 0.25f), 0.9f, 0.5f, false, new Color(0.9f, 0.2f, 0.8f, 0.6f));
@@ -625,16 +546,16 @@ public class SetupVRScene
         GameObject leftPed = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         leftPed.name = "LeftPedestal";
         leftPed.transform.SetParent(bayRoot.transform, false);
-        leftPed.transform.localPosition = new Vector3(-0.75f, 0.65f, 0f);
-        leftPed.transform.localScale = new Vector3(0.55f, 0.65f, 0.55f);
+        leftPed.transform.localPosition = new Vector3(-0.95f, 0.6f, 0f);
+        leftPed.transform.localScale = new Vector3(0.55f, 0.6f, 0.55f);
         leftPed.GetComponent<Renderer>().sharedMaterial = leftPedMat;
 
         // Right Pedestal
         GameObject rightPed = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         rightPed.name = "RightPedestal";
         rightPed.transform.SetParent(bayRoot.transform, false);
-        rightPed.transform.localPosition = new Vector3(0.75f, 0.65f, 0f);
-        rightPed.transform.localScale = new Vector3(0.55f, 0.65f, 0.55f);
+        rightPed.transform.localPosition = new Vector3(0.95f, 0.6f, 0f);
+        rightPed.transform.localScale = new Vector3(0.55f, 0.6f, 0.55f);
         rightPed.GetComponent<Renderer>().sharedMaterial = rightPedMat;
 
         Font font = GetLabFont();
@@ -642,7 +563,7 @@ public class SetupVRScene
         bay.leftPedestalMount = leftPed.transform;
         bay.rightPedestalMount = rightPed.transform;
 
-        // Overhead Board (1400 x 850 px)
+        // Wall Screen Board (1400 x 850 px)
         GameObject canvasGO = CreateWorldCanvas("ComparisonCanvas", bayRoot.transform, new Vector3(0f, 1.75f, 0f), Quaternion.identity, new Vector2(1400f, 850f), 0.001f);
         CreateImage("BoardBG", canvasGO.transform, Vector2.zero, new Vector2(1400f, 850f), new Color(0.05f, 0.07f, 0.12f, 0.96f));
 
@@ -659,21 +580,21 @@ public class SetupVRScene
 
     private static void SetupZoneTriggersAndFloorPads()
     {
-        // 1. Quiz Zone Trigger and Floor Pad (X = -2.6, Z = 1.2)
-        EnsureZonePadAndTrigger("Zone_Quiz", new Vector3(-2.6f, 0f, 1.2f), new Vector3(2.6f, 2.2f, 2.6f),
-            VRZoneTrigger.LabZoneType.Quiz, "Quiz & Examination Bay", new Color(0.1f, 0.6f, 0.9f, 0.8f));
+        // 1. Quiz Zone Trigger and Floor Pad (X = -3.0, Z = 1.2)
+        EnsureZonePadAndTrigger("Zone_Quiz", new Vector3(-3.0f, 0f, 1.2f), new Vector3(2.5f, 2.5f, 2.5f),
+            VRZoneTrigger.LabZoneType.Quiz, "Quiz & Examination Bay", new Color(0.1f, 0.6f, 0.9f, 0.85f));
 
-        // 2. Teaching AI Pod Zone Trigger and Floor Pad (X = +2.6, Z = 1.2)
-        EnsureZonePadAndTrigger("Zone_TeachingAI", new Vector3(2.6f, 0f, 1.2f), new Vector3(2.6f, 2.2f, 2.6f),
-            VRZoneTrigger.LabZoneType.TeachingAI, "Dr. Nova AI Teaching Pod", new Color(0.1f, 0.85f, 0.5f, 0.8f));
+        // 2. Teaching AI Pod Zone Trigger and Floor Pad (X = +3.0, Z = 1.2)
+        EnsureZonePadAndTrigger("Zone_TeachingAI", new Vector3(3.0f, 0f, 1.2f), new Vector3(2.5f, 2.5f, 2.5f),
+            VRZoneTrigger.LabZoneType.TeachingAI, "Dr. Nova AI Teaching Pod", new Color(0.1f, 0.85f, 0.5f, 0.85f));
 
-        // 3. Central Dissection Zone Trigger and Floor Pad (X = 0, Z = 1.2)
-        EnsureZonePadAndTrigger("Zone_Dissection", new Vector3(0f, 0f, 1.2f), new Vector3(2.8f, 2.2f, 2.6f),
-            VRZoneTrigger.LabZoneType.Dissection, "Anatomy Dissection Stage", new Color(0.2f, 0.5f, 0.85f, 0.8f));
+        // 3. Central Dissection Zone Trigger and Floor Pad (X = 0, Z = 0.5)
+        EnsureZonePadAndTrigger("Zone_Dissection", new Vector3(0f, 0f, 0.5f), new Vector3(2.8f, 2.5f, 2.6f),
+            VRZoneTrigger.LabZoneType.Dissection, "Anatomy Dissection Stage", new Color(0.2f, 0.5f, 0.85f, 0.85f));
 
-        // 4. Comparison Bay Zone Trigger and Floor Pad (X = 0, Z = -1.8)
-        EnsureZonePadAndTrigger("Zone_Comparison", new Vector3(0f, 0f, -1.8f), new Vector3(2.8f, 2.2f, 2.6f),
-            VRZoneTrigger.LabZoneType.Comparison, "Organ Comparison Bay", new Color(0.7f, 0.3f, 0.85f, 0.8f));
+        // 4. Comparison Bay Zone Trigger and Floor Pad (X = 0, Z = -4.5)
+        EnsureZonePadAndTrigger("Zone_Comparison", new Vector3(0f, 0f, -4.5f), new Vector3(2.8f, 2.5f, 2.6f),
+            VRZoneTrigger.LabZoneType.Comparison, "Organ Comparison Bay", new Color(0.7f, 0.3f, 0.85f, 0.85f));
     }
 
     private static void EnsureZonePadAndTrigger(string name, Vector3 pos, Vector3 size, VRZoneTrigger.LabZoneType zoneType, string label, Color color)
@@ -683,25 +604,20 @@ public class SetupVRScene
         zoneGO = new GameObject(name);
         zoneGO.transform.position = pos;
 
-        // Visual floor decal cylinder
+        // Visual floor decal disc: sleek, flat, non-colliding
         GameObject decal = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         decal.name = "FloorDecal";
         decal.transform.SetParent(zoneGO.transform, false);
-        decal.transform.localPosition = new Vector3(0f, 0.015f, 0f);
-        decal.transform.localScale = new Vector3(size.x, 0.015f, size.z);
+        decal.transform.localPosition = new Vector3(0f, 0.005f, 0f);
+        decal.transform.localScale = new Vector3(size.x, 0.005f, size.z);
         
         Collider colDecal = decal.GetComponent<Collider>();
         if (colDecal != null) UnityEngine.Object.DestroyImmediate(colDecal);
 
-        Material decalMat = SetupLabScene.CreateMaterial("Lab", "Mat_" + name, color * 0.4f, 0.8f, 0.3f, true, color * 0.6f);
+        Material decalMat = SetupLabScene.CreateMaterial("Lab", "Mat_" + name, color * 0.4f, 0.8f, 0.3f, true, color * 0.7f);
         decal.GetComponent<Renderer>().sharedMaterial = decalMat;
 
-        // World-Space Zone Signboard
-        GameObject signCanvas = CreateWorldCanvas("ZoneBanner", zoneGO.transform, new Vector3(0f, 2.3f, 0f), Quaternion.identity, new Vector2(600f, 100f), 0.0018f);
-        CreateImage("BannerBG", signCanvas.transform, Vector2.zero, new Vector2(600f, 90f), new Color(0.04f, 0.08f, 0.14f, 0.85f));
-        CreateText("BannerText", signCanvas.transform, Vector2.zero, new Vector2(580f, 80f), label.ToUpper(), GetLabFont(), 26, FontStyle.Bold, color, TextAnchor.MiddleCenter);
-
-        // Trigger Collider
+        // Trigger Collider for automatic station switching
         BoxCollider boxCol = zoneGO.AddComponent<BoxCollider>();
         boxCol.isTrigger = true;
         boxCol.center = new Vector3(0f, size.y * 0.5f, 0f);
