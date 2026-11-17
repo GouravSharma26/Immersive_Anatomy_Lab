@@ -5,7 +5,7 @@ services:
     buildCommand: pip install -r backend/requirements.txt
     startCommand: python backend/run_backend.py
     healthCheckPath: /health/live
-    plan: starter # Starter ($7/mo) recommended for zero cold-start; can be switched to free in Dashboard
+    plan: free # 100% Free tier (no credit card required)
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.8
