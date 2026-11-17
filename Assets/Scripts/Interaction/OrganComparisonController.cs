@@ -12,7 +12,7 @@ public class OrganComparisonController : MonoBehaviour
     public Transform inspectionFocalPoint;
 
     [Header("Snap Configuration")]
-    public float snapDistance = 0.75f;
+    public float snapDistance = 0.95f;
 
     [Header("Comparison State")]
     public bool IsInComparisonMode { get; private set; }
@@ -52,6 +52,7 @@ public class OrganComparisonController : MonoBehaviour
         audioSource.playOnAwake = false;
 
         GenerateProceduralClips();
+        EnsurePedestals();
     }
 
     private void Start()
@@ -61,40 +62,84 @@ public class OrganComparisonController : MonoBehaviour
 
     public void EnsurePedestals()
     {
-        if (leftPedestal == null)
+        // 1. Physical Left Comparison Pedestal (Cyan)
+        GameObject lp = GameObject.Find("LeftComparisonPedestal");
+        if (lp == null || lp.GetComponent<MeshRenderer>() == null)
         {
-            GameObject lp = GameObject.Find("LeftComparisonPedestal") ?? GameObject.Find("LeftPedestal");
-            if (lp == null)
-            {
-                lp = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-                lp.name = "LeftComparisonPedestal";
-                lp.transform.position = new Vector3(-0.85f, 0.45f, 0.75f);
-                lp.transform.localScale = new Vector3(0.45f, 0.45f, 0.45f);
-            }
-            if (lp.GetComponent<ComparisonPedestalTrigger>() == null)
-            {
-                var trig = lp.AddComponent<ComparisonPedestalTrigger>();
-                trig.isLeftPedestal = true;
-            }
-            leftPedestal = lp.transform;
+            if (lp != null) Destroy(lp);
+            lp = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            lp.name = "LeftComparisonPedestal";
         }
 
-        if (rightPedestal == null)
+        lp.transform.position = new Vector3(-0.85f, 0.45f, 0.75f);
+        lp.transform.localScale = new Vector3(0.45f, 0.45f, 0.45f);
+
+        var rendA = lp.GetComponent<MeshRenderer>();
+        if (rendA != null)
         {
-            GameObject rp = GameObject.Find("RightComparisonPedestal") ?? GameObject.Find("RightPedestal");
-            if (rp == null)
-            {
-                rp = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-                rp.name = "RightComparisonPedestal";
-                rp.transform.position = new Vector3(0.85f, 0.45f, 0.75f);
-                rp.transform.localScale = new Vector3(0.45f, 0.45f, 0.45f);
-            }
-            if (rp.GetComponent<ComparisonPedestalTrigger>() == null)
-            {
-                var trig = rp.AddComponent<ComparisonPedestalTrigger>();
-                trig.isLeftPedestal = false;
-            }
-            rightPedestal = rp.transform;
+            rendA.material.color = new Color(0.12f, 0.22f, 0.38f);
+        }
+
+        if (lp.GetComponent<ComparisonPedestalTrigger>() == null)
+        {
+            var trig = lp.AddComponent<ComparisonPedestalTrigger>();
+            trig.isLeftPedestal = true;
+        }
+        leftPedestal = lp.transform;
+
+        // Glowing cyan ring cap on top of Pedestal A
+        Transform ringA = lp.transform.Find("GlowCapA");
+        if (ringA == null)
+        {
+            GameObject capA = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            capA.name = "GlowCapA";
+            capA.transform.SetParent(lp.transform, false);
+            capA.transform.localPosition = new Vector3(0f, 1.01f, 0f);
+            capA.transform.localScale = new Vector3(1.08f, 0.04f, 1.08f);
+            var col = capA.GetComponent<Collider>();
+            if (col != null) Destroy(col);
+            var capRend = capA.GetComponent<MeshRenderer>();
+            if (capRend != null) capRend.material.color = new Color(0f, 0.9f, 1f, 0.95f);
+        }
+
+        // 2. Physical Right Comparison Pedestal (Magenta)
+        GameObject rp = GameObject.Find("RightComparisonPedestal");
+        if (rp == null || rp.GetComponent<MeshRenderer>() == null)
+        {
+            if (rp != null) Destroy(rp);
+            rp = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            rp.name = "RightComparisonPedestal";
+        }
+
+        rp.transform.position = new Vector3(0.85f, 0.45f, 0.75f);
+        rp.transform.localScale = new Vector3(0.45f, 0.45f, 0.45f);
+
+        var rendB = rp.GetComponent<MeshRenderer>();
+        if (rendB != null)
+        {
+            rendB.material.color = new Color(0.35f, 0.14f, 0.32f);
+        }
+
+        if (rp.GetComponent<ComparisonPedestalTrigger>() == null)
+        {
+            var trig = rp.AddComponent<ComparisonPedestalTrigger>();
+            trig.isLeftPedestal = false;
+        }
+        rightPedestal = rp.transform;
+
+        // Glowing magenta ring cap on top of Pedestal B
+        Transform ringB = rp.transform.Find("GlowCapB");
+        if (ringB == null)
+        {
+            GameObject capB = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            capB.name = "GlowCapB";
+            capB.transform.SetParent(rp.transform, false);
+            capB.transform.localPosition = new Vector3(0f, 1.01f, 0f);
+            capB.transform.localScale = new Vector3(1.08f, 0.04f, 1.08f);
+            var col = capB.GetComponent<Collider>();
+            if (col != null) Destroy(col);
+            var capRend = capB.GetComponent<MeshRenderer>();
+            if (capRend != null) capRend.material.color = new Color(1f, 0.25f, 0.85f, 0.95f);
         }
 
         if (inspectionFocalPoint == null)
@@ -103,8 +148,8 @@ public class OrganComparisonController : MonoBehaviour
             if (ifp == null)
             {
                 ifp = new GameObject("InspectionFocalPoint");
-                ifp.transform.position = new Vector3(0f, 1.30f, 0.60f);
             }
+            ifp.transform.position = new Vector3(0f, 1.30f, 0.60f);
             inspectionFocalPoint = ifp.transform;
         }
 
@@ -115,8 +160,7 @@ public class OrganComparisonController : MonoBehaviour
 
     private void Update()
     {
-        if (!IsInComparisonMode) return;
-
+        // Continuously check proximity snapping for any organ brought near pedestals
         CheckProximitySnap();
     }
 
@@ -326,7 +370,7 @@ public class OrganComparisonController : MonoBehaviour
     {
         if (leftPedestal == null || rightPedestal == null) return;
 
-        // Check proximity for extracted organ
+        // 1. Check proximity for extracted organ
         if (ExtractedOrgan != null)
         {
             float distA = Vector3.Distance(ExtractedOrgan.transform.position, leftPedestal.position);
@@ -335,10 +379,37 @@ public class OrganComparisonController : MonoBehaviour
             if (distA < snapDistance && OrganA != ExtractedOrgan)
             {
                 SnapOrganToPedestalA(ExtractedOrgan);
+                return;
             }
             else if (distB < snapDistance && OrganB != ExtractedOrgan)
             {
                 SnapOrganToPedestalB(ExtractedOrgan);
+                return;
+            }
+        }
+
+        // 2. Check any grabbable organ being carried or dragged near either pedestal!
+        var allGrabs = FindObjectsByType<VRGrabbableOrgan>(FindObjectsSortMode.None);
+        foreach (var grab in allGrabs)
+        {
+            if (grab == null || grab.IsReturning) continue;
+            var organ = grab.GetComponent<OrganInteractable>();
+            if (organ == null || organ == OrganA || organ == OrganB) continue;
+
+            float distA = Vector3.Distance(grab.transform.position, leftPedestal.position);
+            float distB = Vector3.Distance(grab.transform.position, rightPedestal.position);
+
+            if (distA < snapDistance)
+            {
+                grab.ForceReleaseGrab();
+                SnapOrganToPedestalA(organ);
+                break;
+            }
+            else if (distB < snapDistance)
+            {
+                grab.ForceReleaseGrab();
+                SnapOrganToPedestalB(organ);
+                break;
             }
         }
     }

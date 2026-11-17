@@ -19,6 +19,11 @@ public class AnatomyInteraction : MonoBehaviour
     public bool showDesktopHUD = true;
     public bool hideMouseCursor = true;
 
+    [Header("Player Locomotion")]
+    public float walkSpeed = 3.0f;
+    public float sprintSpeed = 5.5f;
+    private Transform playerRigTransform;
+
     public enum LabArea
     {
         Exploration = 0,
@@ -46,6 +51,20 @@ public class AnatomyInteraction : MonoBehaviour
         if (learningUI == null) learningUI = GetComponent<ImmersiveAnatomy.Learning.AnatomyLearningUI>();
         if (learningUI == null) learningUI = FindFirstObjectByType<ImmersiveAnatomy.Learning.AnatomyLearningUI>();
 
+        var xrOrigin = FindFirstObjectByType<Unity.XR.CoreUtils.XROrigin>();
+        if (xrOrigin != null)
+        {
+            playerRigTransform = xrOrigin.transform;
+        }
+        else if (playerCamera != null && playerCamera.transform.parent != null)
+        {
+            playerRigTransform = playerCamera.transform.parent;
+        }
+        else if (playerCamera != null)
+        {
+            playerRigTransform = playerCamera.transform;
+        }
+
         if (hideMouseCursor)
         {
             SetCursorVisible(false);
@@ -60,6 +79,8 @@ public class AnatomyInteraction : MonoBehaviour
 
     private void Update()
     {
+        HandlePlayerLocomotion();
+
         // Toggle mouse cursor visibility with Escape, Tilde (~), or M
         if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.BackQuote) || Input.GetKeyDown(KeyCode.M))
         {
@@ -101,6 +122,52 @@ public class AnatomyInteraction : MonoBehaviour
                 Vector3 scale = selectedOrgan.transform.localScale + Vector3.one * scroll * 0.4f;
                 float newScale = Mathf.Clamp(scale.x, 0.2f, 3f);
                 selectedOrgan.transform.localScale = Vector3.one * newScale;
+            }
+        }
+    }
+
+    private void HandlePlayerLocomotion()
+    {
+        if (playerCamera == null) return;
+
+        float h = 0f;
+        float v = 0f;
+
+        if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow)) v += 1f;
+        if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow)) v -= 1f;
+        if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) h += 1f;
+        if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) h -= 1f;
+
+        if (Mathf.Abs(h) > 0.01f || Mathf.Abs(v) > 0.01f)
+        {
+            Vector3 forward = playerCamera.transform.forward;
+            forward.y = 0f;
+            forward.Normalize();
+
+            Vector3 right = playerCamera.transform.right;
+            right.y = 0f;
+            right.Normalize();
+
+            Vector3 moveDirection = (forward * v + right * h).normalized;
+            float speed = (Input.GetKey(KeyCode.LeftShift) ? sprintSpeed : walkSpeed) * Time.deltaTime;
+
+            if (playerRigTransform != null)
+            {
+                playerRigTransform.position += moveDirection * speed;
+            }
+            else
+            {
+                playerCamera.transform.position += moveDirection * speed;
+            }
+        }
+
+        // Smooth camera turning / orbit via Right Mouse Button drag
+        if (Input.GetMouseButton(1))
+        {
+            float mouseX = Input.GetAxis("Mouse X") * 2.8f;
+            if (playerRigTransform != null)
+            {
+                playerRigTransform.Rotate(Vector3.up, mouseX, Space.World);
             }
         }
     }

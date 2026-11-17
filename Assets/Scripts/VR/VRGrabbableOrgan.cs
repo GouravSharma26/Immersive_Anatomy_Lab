@@ -71,6 +71,73 @@ namespace ImmersiveAnatomy.VR
             }
         }
 
+        private void Update()
+        {
+            if (isReturning) return;
+
+            // When organ is actively being held, continuously check proximity to comparison pillars for auto-snap!
+            if (isSelected)
+            {
+                CheckHeldProximitySnap();
+            }
+        }
+
+        private void CheckHeldProximitySnap()
+        {
+            Transform leftPed = OrganComparisonController.Instance != null ? OrganComparisonController.Instance.leftPedestal : (VRComparisonBay.Instance != null ? VRComparisonBay.Instance.leftPedestalMount : null);
+            Transform rightPed = OrganComparisonController.Instance != null ? OrganComparisonController.Instance.rightPedestal : (VRComparisonBay.Instance != null ? VRComparisonBay.Instance.rightPedestalMount : null);
+
+            float snapDist = 0.95f;
+
+            if (leftPed != null && Vector3.Distance(transform.position, leftPed.position) < snapDist)
+            {
+                ForceReleaseGrab();
+                if (OrganComparisonController.Instance != null)
+                {
+                    OrganComparisonController.Instance.SnapOrganToPedestalA(organData);
+                }
+                else if (VRComparisonBay.Instance != null)
+                {
+                    transform.position = leftPed.position + Vector3.up * 0.18f;
+                    organRigidbody.linearVelocity = Vector3.zero;
+                    organRigidbody.angularVelocity = Vector3.zero;
+                    organRigidbody.isKinematic = true;
+                    VRComparisonBay.Instance.PlaceOrganOnPedestal(organData, this, true);
+                }
+            }
+            else if (rightPed != null && Vector3.Distance(transform.position, rightPed.position) < snapDist)
+            {
+                ForceReleaseGrab();
+                if (OrganComparisonController.Instance != null)
+                {
+                    OrganComparisonController.Instance.SnapOrganToPedestalB(organData);
+                }
+                else if (VRComparisonBay.Instance != null)
+                {
+                    transform.position = rightPed.position + Vector3.up * 0.18f;
+                    organRigidbody.linearVelocity = Vector3.zero;
+                    organRigidbody.angularVelocity = Vector3.zero;
+                    organRigidbody.isKinematic = true;
+                    VRComparisonBay.Instance.PlaceOrganOnPedestal(organData, this, false);
+                }
+            }
+        }
+
+        public void ForceReleaseGrab()
+        {
+            if (interactionManager != null && isSelected && interactorsSelecting != null)
+            {
+                var selectList = new System.Collections.Generic.List<UnityEngine.XR.Interaction.Toolkit.Interactors.IXRSelectInteractor>(interactorsSelecting);
+                foreach (var interactor in selectList)
+                {
+                    if (interactor != null)
+                    {
+                        interactionManager.SelectExit(interactor, this);
+                    }
+                }
+            }
+        }
+
         protected override void OnSelectEntered(SelectEnterEventArgs args)
         {
             base.OnSelectEntered(args);
