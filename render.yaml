@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: immersive-anatomy-api
+    runtime: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: python backend/run_backend.py
+    healthCheckPath: /health/live
+    plan: starter # Starter ($7/mo) recommended for zero cold-start; can be switched to free in Dashboard
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.8
+      - key: HOST
+        value: 0.0.0.0
+      - key: GEMINI_API_KEY
+        sync: false # Set via Render Dashboard Environment Secrets

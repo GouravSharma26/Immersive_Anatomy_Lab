@@ -179,18 +179,18 @@ namespace ImmersiveAnatomy.Editor
             {
                 foreach (var feat in openXRSettings.GetFeatures())
                 {
-                    string fName = feat.name.ToLower();
-                    string fid = feat.featureIdInternal.ToLower();
+                    string fName = (feat.name ?? "").ToLower();
+                    string typeName = feat.GetType().Name.ToLower();
 
-                    if (fName.Contains("meta quest") || fid.Contains("metaquest") ||
-                        fName.Contains("oculus touch") || fid.Contains("oculustouch") ||
-                        fName.Contains("meta quest touch plus") || fid.Contains("metaquestplus") ||
-                        fName.Contains("meta quest touch pro") || fid.Contains("metaquestpro") ||
-                        fName.Contains("hand interaction") || fid.Contains("handinteraction") ||
-                        fName.Contains("palm pose") || fid.Contains("palmpose"))
+                    if (fName.Contains("meta quest") || typeName.Contains("metaquest") ||
+                        fName.Contains("oculus touch") || typeName.Contains("oculustouch") ||
+                        fName.Contains("meta quest touch plus") || typeName.Contains("metaquestplus") ||
+                        fName.Contains("meta quest touch pro") || typeName.Contains("metaquestpro") ||
+                        fName.Contains("hand interaction") || typeName.Contains("handinteraction") ||
+                        fName.Contains("palm pose") || typeName.Contains("palmpose"))
                     {
                         feat.enabled = true;
-                        Debug.Log($"[DualPlatformRelease] Enabled Android OpenXR Feature: {feat.nameUi} ({feat.featureIdInternal})");
+                        Debug.Log($"[DualPlatformRelease] Enabled Android OpenXR Feature: {feat.name} ({feat.GetType().Name})");
                     }
                 }
                 EditorUtility.SetDirty(openXRSettings);
