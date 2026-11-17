@@ -3080,6 +3080,7 @@ GameObject:
   - component: {fileID: 281551286}
   - component: {fileID: 281551285}
   - component: {fileID: 281551284}
+  - component: {fileID: 281551298}
   m_Layer: 0
   m_Name: Systems
   m_TagString: Untagged
@@ -3388,6 +3389,25 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &281551298
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 281551283}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78b40a6e0932467ca35748231e6d194b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ImmersiveAnatomy.Diagnostics::ClinicalPerformanceProfiler
+  showProfilerGUI: 0
+  toggleKey: 112
+  altToggleKey: 294
+  updateInterval: 0.5
+  anatomicalVertexCount: 47720
+  anatomicalTriangleCount: 34956
+  activeModelCount: 6
 --- !u!1 &283039396
 GameObject:
   m_ObjectHideFlags: 0
