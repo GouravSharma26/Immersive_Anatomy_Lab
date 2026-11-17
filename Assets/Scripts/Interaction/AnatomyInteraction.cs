@@ -17,6 +17,7 @@ public class AnatomyInteraction : MonoBehaviour
 
     [Header("Display Settings")]
     public bool showDesktopHUD = true;
+    public bool hideMouseCursor = true;
 
     public enum LabArea
     {
@@ -44,10 +45,27 @@ public class AnatomyInteraction : MonoBehaviour
         if (cameraInspectionController == null) cameraInspectionController = FindFirstObjectByType<CameraInspectionController>();
         if (learningUI == null) learningUI = GetComponent<ImmersiveAnatomy.Learning.AnatomyLearningUI>();
         if (learningUI == null) learningUI = FindFirstObjectByType<ImmersiveAnatomy.Learning.AnatomyLearningUI>();
+
+        if (hideMouseCursor)
+        {
+            SetCursorVisible(false);
+        }
+    }
+
+    public void SetCursorVisible(bool isVisible)
+    {
+        Cursor.visible = isVisible;
+        Cursor.lockState = isVisible ? CursorLockMode.None : CursorLockMode.Confined;
     }
 
     private void Update()
     {
+        // Toggle mouse cursor visibility with Escape, Tilde (~), or M
+        if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.BackQuote) || Input.GetKeyDown(KeyCode.M))
+        {
+            SetCursorVisible(!Cursor.visible);
+        }
+
         HandleRaycastHover();
 
         if (Input.GetMouseButtonDown(0))
@@ -686,7 +704,8 @@ public class AnatomyInteraction : MonoBehaviour
 
         // 6. BOTTOM CONTROLS QUICK BAR
         GUI.Box(new Rect(15, Screen.height - 45, Screen.width - 30, 32), "");
-        string hint = "<b>Phase 5 Controls:</b> WASD Move | Mouse Look | Click Select | Q/E Rotate | Scroll Zoom | F Focus/Orbit | L AI Tutor & Quiz | X Explode | Z X-Ray | C Compare | I Isolate | 1-6 Systems | R Reset";
+        string cursorStatus = Cursor.visible ? "<color=#FFCC00>Visible</color>" : "<color=#00FFAA>Hidden</color>";
+        string hint = $"<b>Controls:</b> WASD Move | Mouse Look | G / Mid-Click Grab | Click Select | Q/E Rotate | F Focus | C Compare | <b>Cursor [{cursorStatus} - Esc/~ to Toggle]</b>";
         GUI.Label(new Rect(25, Screen.height - 39, Screen.width - 50, 24), hint);
     }
 }
