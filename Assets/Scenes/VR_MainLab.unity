@@ -3119,7 +3119,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e4fedb36e96aa9843b9f3ad1dcd16715, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ImmersiveAnatomy.Learning.LLMAnatomyClient
-  serverBaseUrl: http://127.0.0.1:8000
+  environment: 2
+  productionCloudUrl: https://immersive-anatomy-api.onrender.com
+  localDevUrl: http://127.0.0.1:8000
+  localLanUrl: http://192.168.1.100:8000
+  serverBaseUrl: https://immersive-anatomy-api.onrender.com
   isServerOnline: 0
   isLoading: 0
 --- !u!114 &281551286
