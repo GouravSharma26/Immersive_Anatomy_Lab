@@ -211,6 +211,7 @@ public class OrganComparisonController : MonoBehaviour
         extractedOriginalPos = organ.transform.position;
         extractedOriginalRot = organ.transform.rotation;
         extractedOriginalScale = organ.transform.localScale;
+        ExtractedOrgan.ResetToOriginalMaterials();
 
         Vector3 targetPos = inspectionFocalPoint != null ? inspectionFocalPoint.position : new Vector3(0f, 1.35f, 0.85f);
         // Face forward toward the player
@@ -258,6 +259,7 @@ public class OrganComparisonController : MonoBehaviour
         organAOriginalScale = (organ == ExtractedOrgan) ? extractedOriginalScale : organ.transform.localScale;
 
         if (ExtractedOrgan == organ) ExtractedOrgan = null;
+        OrganA.ResetToOriginalMaterials();
 
         // Position elevated on top of Pedestal A in clear view at eye level
         Vector3 targetPos = new Vector3(leftPedestal.position.x, 1.35f, leftPedestal.position.z);
@@ -306,6 +308,7 @@ public class OrganComparisonController : MonoBehaviour
         organBOriginalScale = (organ == ExtractedOrgan) ? extractedOriginalScale : organ.transform.localScale;
 
         if (ExtractedOrgan == organ) ExtractedOrgan = null;
+        OrganB.ResetToOriginalMaterials();
 
         // Position elevated on top of Pedestal B in clear view at eye level
         Vector3 targetPos = new Vector3(rightPedestal.position.x, 1.35f, rightPedestal.position.z);
@@ -493,6 +496,7 @@ public class OrganComparisonController : MonoBehaviour
     private void ReturnOrganToOriginalSocket(OrganInteractable organ, Vector3 targetPos, Quaternion targetRot, Vector3 targetScale)
     {
         if (organ == null) return;
+        organ.ResetToOriginalMaterials();
 
         var grabbable = organ.GetComponent<VRGrabbableOrgan>();
         if (grabbable != null)

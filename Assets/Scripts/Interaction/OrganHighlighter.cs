@@ -49,10 +49,10 @@ public class OrganHighlighter : MonoBehaviour
 
     public void OnHoverEnter(OrganInteractable organ)
     {
-        if (organ == null || organ == currentSelected) return;
+        if (organ == null) return;
         EnsureDefaultMaterials();
 
-        if (currentHovered != null && currentHovered != currentSelected)
+        if (currentHovered != null && currentHovered != organ)
         {
             currentHovered.SetHighlight(null, false);
         }
@@ -62,7 +62,7 @@ public class OrganHighlighter : MonoBehaviour
 
     public void OnHoverExit(OrganInteractable organ)
     {
-        if (organ == null || organ == currentSelected) return;
+        if (organ == null) return;
         if (currentHovered == organ)
         {
             currentHovered.SetHighlight(null, false);
@@ -74,18 +74,19 @@ public class OrganHighlighter : MonoBehaviour
     {
         EnsureDefaultMaterials();
 
-        // Unhighlight previous selection
-        if (currentSelected != null)
+        // Unhighlight previous selection if any
+        if (currentSelected != null && currentSelected != organ)
         {
             currentSelected.SetHighlight(null, false);
         }
 
         currentSelected = organ;
 
+        // When selected or placed on pedestals, show original realistic PBR color.
+        // Highlight ONLY applies during active hover.
         if (currentSelected != null)
         {
-            if (currentHovered == currentSelected) currentHovered = null;
-            currentSelected.SetHighlight(selectMaterial != null ? selectMaterial : hoverMaterial, true);
+            currentSelected.SetHighlight(null, false);
         }
     }
 

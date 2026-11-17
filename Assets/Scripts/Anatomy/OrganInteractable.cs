@@ -34,20 +34,38 @@ public class OrganInteractable : MonoBehaviour
         originalLocalRotation = transform.localRotation;
         originalLocalScale = transform.localScale;
 
-        organRenderers = GetComponentsInChildren<Renderer>();
+        EnsureRendererCache();
+    }
+
+    public void EnsureRendererCache()
+    {
+        if (organRenderers == null || organRenderers.Length == 0)
+        {
+            organRenderers = GetComponentsInChildren<Renderer>(true);
+        }
+
         if (organRenderers != null && organRenderers.Length > 0)
         {
-            originalMaterials = new Material[organRenderers.Length][];
-            for (int i = 0; i < organRenderers.Length; i++)
+            if (originalMaterials == null || originalMaterials.Length != organRenderers.Length)
             {
-                originalMaterials[i] = organRenderers[i].sharedMaterials;
+                originalMaterials = new Material[organRenderers.Length][];
+                for (int i = 0; i < organRenderers.Length; i++)
+                {
+                    if (organRenderers[i] != null)
+                    {
+                        originalMaterials[i] = organRenderers[i].sharedMaterials;
+                    }
+                }
             }
         }
     }
 
     public void SetHighlight(Material highlightMaterial, bool enable)
     {
-        if (organRenderers == null || highlightMaterial == null) return;
+        EnsureRendererCache();
+        if (organRenderers == null) return;
+        if (enable && highlightMaterial == null) return;
+
         isHighlighted = enable;
 
         for (int i = 0; i < organRenderers.Length; i++)
@@ -55,35 +73,61 @@ public class OrganInteractable : MonoBehaviour
             if (organRenderers[i] == null) continue;
             if (enable)
             {
-                Material[] mats = new Material[originalMaterials[i].Length];
-                for (int m = 0; m < mats.Length; m++)
+                int count = (originalMaterials != null && i < originalMaterials.Length && originalMaterials[i] != null)
+                    ? originalMaterials[i].Length
+                    : (organRenderers[i].sharedMaterials != null ? organRenderers[i].sharedMaterials.Length : 1);
+
+                if (count <= 1)
                 {
-                    mats[m] = highlightMaterial;
+                    organRenderers[i].material = highlightMaterial;
                 }
-                organRenderers[i].materials = mats;
+                else
+                {
+                    Material[] mats = new Material[count];
+                    for (int m = 0; m < count; m++) mats[m] = highlightMaterial;
+                    organRenderers[i].materials = mats;
+                }
             }
             else
             {
-                organRenderers[i].materials = originalMaterials[i];
+                if (originalMaterials != null && i < originalMaterials.Length && originalMaterials[i] != null)
+                {
+                    organRenderers[i].sharedMaterials = originalMaterials[i];
+                }
             }
         }
     }
 
+    public void ResetToOriginalMaterials()
+    {
+        SetHighlight(null, false);
+    }
+
     public void SetGhostMode(Material ghostMaterial, bool enable)
     {
-        if (organRenderers == null || ghostMaterial == null) return;
+        EnsureRendererCache();
+        if (organRenderers == null) return;
+        if (enable && ghostMaterial == null) return;
+
         for (int i = 0; i < organRenderers.Length; i++)
         {
             if (organRenderers[i] == null) continue;
             if (enable)
             {
-                Material[] mats = new Material[originalMaterials[i].Length];
-                for (int m = 0; m < mats.Length; m++) mats[m] = ghostMaterial;
+                int count = (originalMaterials != null && i < originalMaterials.Length && originalMaterials[i] != null)
+                    ? originalMaterials[i].Length
+                    : (organRenderers[i].sharedMaterials != null ? organRenderers[i].sharedMaterials.Length : 1);
+
+                Material[] mats = new Material[count];
+                for (int m = 0; m < count; m++) mats[m] = ghostMaterial;
                 organRenderers[i].materials = mats;
             }
             else
             {
-                organRenderers[i].materials = originalMaterials[i];
+                if (originalMaterials != null && i < originalMaterials.Length && originalMaterials[i] != null)
+                {
+                    organRenderers[i].sharedMaterials = originalMaterials[i];
+                }
             }
         }
     }
