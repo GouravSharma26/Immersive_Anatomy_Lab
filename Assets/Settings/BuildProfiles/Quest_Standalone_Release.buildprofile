@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a7a31b99a6cf75d4a95e7c8fbdbfa061, type: 3}
+  m_Name: Quest_Standalone_Release
+  m_EditorClassIdentifier: UnityEditor.BuildProfileModule::UnityEditor.Build.Profile.BuildProfile
+  m_BuildTarget: 13
+  m_BuildTargetGroup: 13
+  m_BuildSubtarget: 0
+  m_ScriptingBackend: 1
+  m_Architecture: 2
+  m_GraphicsAPIs:
+  - 21
+  - 11
+  m_Scenes:
+  - path: Assets/Scenes/VR_MainLab.unity
+    enabled: 1
