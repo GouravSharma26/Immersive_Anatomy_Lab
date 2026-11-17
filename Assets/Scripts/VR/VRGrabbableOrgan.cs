@@ -115,36 +115,55 @@ namespace ImmersiveAnatomy.VR
             {
                 SnapToSocket();
             }
-            else if (VRComparisonBay.Instance != null && VRComparisonBay.Instance.leftPedestalMount != null &&
-                     Vector3.Distance(transform.position, VRComparisonBay.Instance.leftPedestalMount.position) < 0.65f)
-            {
-                transform.position = VRComparisonBay.Instance.leftPedestalMount.position + Vector3.up * 0.15f;
-                organRigidbody.linearVelocity = Vector3.zero;
-                organRigidbody.angularVelocity = Vector3.zero;
-                organRigidbody.isKinematic = true;
-                VRComparisonBay.Instance.PlaceOrganOnPedestal(organData, this, true);
-            }
-            else if (VRComparisonBay.Instance != null && VRComparisonBay.Instance.rightPedestalMount != null &&
-                     Vector3.Distance(transform.position, VRComparisonBay.Instance.rightPedestalMount.position) < 0.65f)
-            {
-                transform.position = VRComparisonBay.Instance.rightPedestalMount.position + Vector3.up * 0.15f;
-                organRigidbody.linearVelocity = Vector3.zero;
-                organRigidbody.angularVelocity = Vector3.zero;
-                organRigidbody.isKinematic = true;
-                VRComparisonBay.Instance.PlaceOrganOnPedestal(organData, this, false);
-            }
-            else if (floatWhenReleased)
-            {
-                // Float stably in midair for 360-degree surgical examination
-                organRigidbody.linearVelocity = Vector3.zero;
-                organRigidbody.angularVelocity = Vector3.zero;
-                organRigidbody.isKinematic = true;
-                PlaySound(releaseAudioClip, 0.5f);
-            }
             else
             {
-                organRigidbody.isKinematic = false;
-                organRigidbody.useGravity = true;
+                // Check Comparison Pedestal A
+                Transform leftPed = OrganComparisonController.Instance != null ? OrganComparisonController.Instance.leftPedestal : (VRComparisonBay.Instance != null ? VRComparisonBay.Instance.leftPedestalMount : null);
+                Transform rightPed = OrganComparisonController.Instance != null ? OrganComparisonController.Instance.rightPedestal : (VRComparisonBay.Instance != null ? VRComparisonBay.Instance.rightPedestalMount : null);
+
+                if (leftPed != null && Vector3.Distance(transform.position, leftPed.position) < 0.75f)
+                {
+                    if (OrganComparisonController.Instance != null)
+                    {
+                        OrganComparisonController.Instance.SnapOrganToPedestalA(organData);
+                    }
+                    else if (VRComparisonBay.Instance != null)
+                    {
+                        transform.position = leftPed.position + Vector3.up * 0.18f;
+                        organRigidbody.linearVelocity = Vector3.zero;
+                        organRigidbody.angularVelocity = Vector3.zero;
+                        organRigidbody.isKinematic = true;
+                        VRComparisonBay.Instance.PlaceOrganOnPedestal(organData, this, true);
+                    }
+                }
+                else if (rightPed != null && Vector3.Distance(transform.position, rightPed.position) < 0.75f)
+                {
+                    if (OrganComparisonController.Instance != null)
+                    {
+                        OrganComparisonController.Instance.SnapOrganToPedestalB(organData);
+                    }
+                    else if (VRComparisonBay.Instance != null)
+                    {
+                        transform.position = rightPed.position + Vector3.up * 0.18f;
+                        organRigidbody.linearVelocity = Vector3.zero;
+                        organRigidbody.angularVelocity = Vector3.zero;
+                        organRigidbody.isKinematic = true;
+                        VRComparisonBay.Instance.PlaceOrganOnPedestal(organData, this, false);
+                    }
+                }
+                else if (floatWhenReleased)
+                {
+                    // Float stably in midair for 360-degree surgical examination
+                    organRigidbody.linearVelocity = Vector3.zero;
+                    organRigidbody.angularVelocity = Vector3.zero;
+                    organRigidbody.isKinematic = true;
+                    PlaySound(releaseAudioClip, 0.5f);
+                }
+                else
+                {
+                    organRigidbody.isKinematic = false;
+                    organRigidbody.useGravity = true;
+                }
             }
         }
 

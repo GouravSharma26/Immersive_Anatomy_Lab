@@ -173,6 +173,21 @@ public class AnatomyInteraction : MonoBehaviour
         if (mousePos.x > Screen.width - 380 && mousePos.y > 55 && mousePos.y < Screen.height - 55) return;
         if (mousePos.y >= Screen.height - 55 || mousePos.y <= 55) return;
 
+        // Check if clicking directly on a comparison pedestal
+        if (playerCamera != null)
+        {
+            Ray ray = playerCamera.ScreenPointToRay(mousePos);
+            if (Physics.Raycast(ray, out RaycastHit hit, interactionDistance))
+            {
+                var pedTrigger = hit.collider.GetComponentInParent<ComparisonPedestalTrigger>();
+                if (pedTrigger != null)
+                {
+                    pedTrigger.OnPedestalClicked();
+                    return;
+                }
+            }
+        }
+
         if (hoveredOrgan != null)
         {
             SelectOrgan(hoveredOrgan);
@@ -194,6 +209,8 @@ public class AnatomyInteraction : MonoBehaviour
         if (comparisonController != null && comparisonController.IsInComparisonMode)
         {
             comparisonController.AddOrganToComparison(selectedOrgan);
+            // Clear selectedOrgan so subsequent clicks on other organs are not blocked
+            selectedOrgan = null;
             return;
         }
 
@@ -473,46 +490,78 @@ public class AnatomyInteraction : MonoBehaviour
         if (comparisonController != null && comparisonController.IsInComparisonMode)
         {
             // COMPARISON MATRIX PANEL
-            GUI.Box(new Rect(rightX, 62, rightW, 430), "<b>ORGAN COMPARISON MATRIX</b>");
-            
+            GUI.Box(new Rect(rightX, 62, rightW, 490), "<b>ORGAN COMPARISON MATRIX</b>");
+
             OrganInteractable a = comparisonController.OrganA;
             OrganInteractable b = comparisonController.OrganB;
+            OrganInteractable ext = comparisonController.ExtractedOrgan;
 
-            if (a == null)
+            // Notice if an organ has been extracted to the front
+            if (ext != null)
             {
-                GUI.Label(new Rect(rightX + 15, 95, rightW - 30, 40), "<i>Click any organ to place it on Pedestal A.</i>");
-            }
-            else
-            {
-                GUI.Label(new Rect(rightX + 15, 90, rightW - 30, 22), $"<b>Organ A:</b> <color=#00E5FF>{a.organName}</color> ({a.bodySystem})");
-                GUI.Label(new Rect(rightX + 15, 110, rightW - 30, 20), $"Mass: <b>{a.normalWeight}g</b> | Supply: {a.arterialSupply}");
-            }
-
-            GUI.Box(new Rect(rightX + 15, 140, rightW - 30, 2), "");
-
-            if (b == null)
-            {
-                GUI.Label(new Rect(rightX + 15, 150, rightW - 30, 40), "<i>Click a second organ to place on Pedestal B for side-by-side comparative analysis.</i>");
-            }
-            else
-            {
-                GUI.Label(new Rect(rightX + 15, 150, rightW - 30, 22), $"<b>Organ B:</b> <color=#FFCC00>{b.organName}</color> ({b.bodySystem})");
-                GUI.Label(new Rect(rightX + 15, 170, rightW - 30, 20), $"Mass: <b>{b.normalWeight}g</b> | Supply: {b.arterialSupply}");
-
-                // Comparative Differential
-                if (a != null)
+                GUI.Box(new Rect(rightX + 10, 88, rightW - 20, 52), "");
+                GUI.Label(new Rect(rightX + 15, 90, rightW - 30, 20), $"<b>Floating in Front:</b> <color=#00FFAA>{ext.organName}</color>");
+                if (GUI.Button(new Rect(rightX + 15, 112, (rightW - 35) / 2, 24), "➔ Snap to Pillar A"))
                 {
-                    float diff = Mathf.Abs(a.normalWeight - b.normalWeight);
-                    string heavier = a.normalWeight >= b.normalWeight ? a.organName : b.organName;
-                    GUI.Label(new Rect(rightX + 15, 200, rightW - 30, 22), $"<b>Mass Difference:</b> {diff:F0}g ({heavier} is heavier)");
-                    
-                    GUI.Label(new Rect(rightX + 15, 230, rightW - 30, 50), $"<b>{a.organName} Physiology:</b>\n{a.description}");
-                    GUI.Label(new Rect(rightX + 15, 290, rightW - 30, 50), $"<b>{b.organName} Physiology:</b>\n{b.description}");
-                    GUI.Label(new Rect(rightX + 15, 350, rightW - 30, 40), $"<b>Pathology Contrast:</b>\n{a.commonPathology} vs {b.commonPathology}");
+                    comparisonController.SnapOrganToPedestalA(ext);
+                }
+                if (GUI.Button(new Rect(rightX + 20 + (rightW - 35) / 2, 112, (rightW - 35) / 2, 24), "➔ Snap to Pillar B"))
+                {
+                    comparisonController.SnapOrganToPedestalB(ext);
                 }
             }
 
-            if (GUI.Button(new Rect(rightX + 15, 395, rightW - 30, 26), "Exit Comparison Mode [C]"))
+            int contentY = (ext != null) ? 146 : 90;
+
+            // Pillar A Display
+            if (a == null)
+            {
+                GUI.Label(new Rect(rightX + 15, contentY, rightW - 30, 36), "<b>Pillar A:</b> <color=#666666>[Empty]</color>\n<i>Click any organ on the body to extract it.</i>");
+            }
+            else
+            {
+                GUI.Label(new Rect(rightX + 15, contentY, rightW - 30, 20), $"<b>Pillar A:</b> <color=#00E5FF>{a.organName}</color> ({a.bodySystem})");
+                GUI.Label(new Rect(rightX + 15, contentY + 18, rightW - 30, 18), $"Mass: <b>{a.normalWeight}g</b> | Vascular: {a.arterialSupply}");
+            }
+
+            GUI.Box(new Rect(rightX + 15, contentY + 40, rightW - 30, 2), "");
+
+            // Pillar B Display
+            if (b == null)
+            {
+                GUI.Label(new Rect(rightX + 15, contentY + 48, rightW - 30, 36), "<b>Pillar B:</b> <color=#666666>[Empty]</color>\n<i>Click a second organ on the body to extract it.</i>");
+            }
+            else
+            {
+                GUI.Label(new Rect(rightX + 15, contentY + 48, rightW - 30, 20), $"<b>Pillar B:</b> <color=#FF88FF>{b.organName}</color> ({b.bodySystem})");
+                GUI.Label(new Rect(rightX + 15, contentY + 66, rightW - 30, 18), $"Mass: <b>{b.normalWeight}g</b> | Vascular: {b.arterialSupply}");
+            }
+
+            // Both organs placed -> Show Comparative Differential
+            if (a != null && b != null)
+            {
+                int diffY = contentY + 90;
+                float diff = Mathf.Abs(a.normalWeight - b.normalWeight);
+                string heavier = a.normalWeight >= b.normalWeight ? a.organName : b.organName;
+                float ratio = (float)Mathf.Max(a.normalWeight, b.normalWeight) / Mathf.Max(1f, Mathf.Min(a.normalWeight, b.normalWeight));
+
+                GUI.Label(new Rect(rightX + 15, diffY, rightW - 30, 20), $"<b>Mass Difference:</b> <color=#FFCC00>{diff:F0}g</color> ({ratio:F1}x - {heavier} is heavier)");
+                GUI.Label(new Rect(rightX + 15, diffY + 22, rightW - 30, 42), $"<b>{a.organName} Function:</b>\n<size=11>{a.clinicalFunction}</size>");
+                GUI.Label(new Rect(rightX + 15, diffY + 66, rightW - 30, 42), $"<b>{b.organName} Function:</b>\n<size=11>{b.clinicalFunction}</size>");
+                GUI.Label(new Rect(rightX + 15, diffY + 110, rightW - 30, 40), $"<b>Pathology Contrast:</b>\n<size=11>{a.commonPathology} vs {b.commonPathology}</size>");
+            }
+
+            // Footer Controls
+            if (GUI.Button(new Rect(rightX + 15, 415, (rightW - 35) / 2, 26), "⇄ Swap A & B"))
+            {
+                comparisonController.SwapPedestals();
+            }
+            if (GUI.Button(new Rect(rightX + 20 + (rightW - 35) / 2, 415, (rightW - 35) / 2, 26), "Clear & Return"))
+            {
+                comparisonController.ReturnAllOrgansToSockets();
+            }
+
+            if (GUI.Button(new Rect(rightX + 15, 448, rightW - 30, 26), "Exit Comparison Mode [C]"))
             {
                 comparisonController.ExitComparisonMode();
             }

@@ -393,12 +393,21 @@ public class SetupVRScene
             anatomy.transform.rotation = Quaternion.identity;
         }
 
-        // Clean up any old floating console slabs or organ cards that obstructed the view
+        // Clean, dedicated front Inspection / Presentation Focal Point
+        GameObject ifp = GameObject.Find("InspectionFocalPoint");
+        if (ifp == null) ifp = new GameObject("InspectionFocalPoint");
+        ifp.transform.position = new Vector3(0f, 1.30f, 0.60f);
+        ifp.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+
+        // Clean up any old floating console slabs, tablets, or cards that obstructed the view
         GameObject consoleRoot = GameObject.Find("DissectionTableConsole");
         if (consoleRoot != null) UnityEngine.Object.DestroyImmediate(consoleRoot);
 
         GameObject cardRoot = GameObject.Find("HolographicOrganCard");
         if (cardRoot != null) UnityEngine.Object.DestroyImmediate(cardRoot);
+
+        GameObject tablet = GameObject.Find("VR_ClinicalTablet");
+        if (tablet != null) UnityEngine.Object.DestroyImmediate(tablet);
     }
 
     private static void SetupQuizKioskStation()
@@ -406,9 +415,9 @@ public class SetupVRScene
         GameObject kioskRoot = GameObject.Find("VRQuizStation");
         if (kioskRoot != null) UnityEngine.Object.DestroyImmediate(kioskRoot);
         kioskRoot = new GameObject("VRQuizStation");
-        // Wall-mounted on the left wall with clear sightline to central body
+        // Wall-mounted on the left wall with clear sightline to central body, facing inward (+X)
         kioskRoot.transform.position = new Vector3(-6.2f, 0.2f, 1.4f);
-        kioskRoot.transform.rotation = Quaternion.Euler(0f, 75f, 0f);
+        kioskRoot.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
 
         Font font = GetLabFont();
         VRQuizStation station = kioskRoot.AddComponent<VRQuizStation>();
@@ -487,9 +496,9 @@ public class SetupVRScene
         GameObject podRoot = GameObject.Find("VRAINovaPod");
         if (podRoot != null) UnityEngine.Object.DestroyImmediate(podRoot);
         podRoot = new GameObject("VRAINovaPod");
-        // Wall-mounted on the right wall with clear sightline to central body
+        // Wall-mounted on the right wall with clear sightline to central body, facing inward (-X)
         podRoot.transform.position = new Vector3(6.2f, 0.2f, 1.4f);
-        podRoot.transform.rotation = Quaternion.Euler(0f, -75f, 0f);
+        podRoot.transform.rotation = Quaternion.Euler(0f, -90f, 0f);
 
         Font font = GetLabFont();
         VRAINovaPod pod = podRoot.AddComponent<VRAINovaPod>();
@@ -532,33 +541,67 @@ public class SetupVRScene
 
     private static void SetupComparisonBayStation()
     {
-        GameObject bayRoot = GameObject.Find("VRComparisonBay");
-        if (bayRoot != null) UnityEngine.Object.DestroyImmediate(bayRoot);
-        bayRoot = new GameObject("VRComparisonBay");
-        // Mounted cleanly against the back wall (completely away from the central observation zone)
-        bayRoot.transform.position = new Vector3(0f, 0.1f, -6.8f);
-        bayRoot.transform.rotation = Quaternion.identity;
+        Font font = GetLabFont();
 
         Material leftPedMat = SetupLabScene.CreateMaterial("Lab", "VR_LeftPedMat", new Color(0.1f, 0.15f, 0.25f), 0.9f, 0.5f, false, new Color(0f, 0.6f, 1f, 0.6f));
         Material rightPedMat = SetupLabScene.CreateMaterial("Lab", "VR_RightPedMat", new Color(0.2f, 0.12f, 0.25f), 0.9f, 0.5f, false, new Color(0.9f, 0.2f, 0.8f, 0.6f));
+        Material glowRingMatA = SetupLabScene.CreateMaterial("Lab", "GlowRingA", new Color(0f, 0.8f, 1f, 0.9f), 0.9f, 0.2f, false, new Color(0f, 0.9f, 1f, 0.9f));
+        Material glowRingMatB = SetupLabScene.CreateMaterial("Lab", "GlowRingB", new Color(1f, 0.2f, 0.8f, 0.9f), 0.9f, 0.2f, false, new Color(1f, 0.3f, 0.9f, 0.9f));
 
-        // Left Pedestal
-        GameObject leftPed = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        leftPed.name = "LeftPedestal";
-        leftPed.transform.SetParent(bayRoot.transform, false);
-        leftPed.transform.localPosition = new Vector3(-0.95f, 0.6f, 0f);
-        leftPed.transform.localScale = new Vector3(0.55f, 0.6f, 0.55f);
+        // 1. PHYSICAL COMPARISON PILLAR A (CYAN) - In workspace flanking central table
+        GameObject leftPed = GameObject.Find("LeftComparisonPedestal");
+        if (leftPed != null) UnityEngine.Object.DestroyImmediate(leftPed);
+        leftPed = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        leftPed.name = "LeftComparisonPedestal";
+        leftPed.transform.position = new Vector3(-0.85f, 0.45f, 0.75f);
+        leftPed.transform.localScale = new Vector3(0.45f, 0.45f, 0.45f);
         leftPed.GetComponent<Renderer>().sharedMaterial = leftPedMat;
 
-        // Right Pedestal
-        GameObject rightPed = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        rightPed.name = "RightPedestal";
-        rightPed.transform.SetParent(bayRoot.transform, false);
-        rightPed.transform.localPosition = new Vector3(0.95f, 0.6f, 0f);
-        rightPed.transform.localScale = new Vector3(0.55f, 0.6f, 0.55f);
+        var trigA = leftPed.AddComponent<ComparisonPedestalTrigger>();
+        trigA.isLeftPedestal = true;
+
+        GameObject leftRing = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        leftRing.name = "GlowRingA";
+        leftRing.transform.SetParent(leftPed.transform, false);
+        leftRing.transform.localPosition = new Vector3(0f, 1.02f, 0f);
+        leftRing.transform.localScale = new Vector3(1.05f, 0.05f, 1.05f);
+        leftRing.GetComponent<Renderer>().sharedMaterial = glowRingMatA;
+        if (leftRing.GetComponent<Collider>() != null) UnityEngine.Object.DestroyImmediate(leftRing.GetComponent<Collider>());
+
+        GameObject labelCanvasA = CreateWorldCanvas("LabelCanvasA", leftPed.transform, new Vector3(0f, 1.45f, 0f), Quaternion.Euler(0f, 180f, 0f), new Vector2(400f, 120f), 0.001f);
+        CreateText("LabelTextA", labelCanvasA.transform, Vector2.zero, new Vector2(380f, 100f), "<b>PEDESTAL A</b>\n<size=18><color=#00E5FF>Auto-Snap / Place Organ 1</color></size>", font, 24, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+
+        // 2. PHYSICAL COMPARISON PILLAR B (MAGENTA) - In workspace flanking central table
+        GameObject rightPed = GameObject.Find("RightComparisonPedestal");
+        if (rightPed != null) UnityEngine.Object.DestroyImmediate(rightPed);
+        rightPed = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        rightPed.name = "RightComparisonPedestal";
+        rightPed.transform.position = new Vector3(0.85f, 0.45f, 0.75f);
+        rightPed.transform.localScale = new Vector3(0.45f, 0.45f, 0.45f);
         rightPed.GetComponent<Renderer>().sharedMaterial = rightPedMat;
 
-        Font font = GetLabFont();
+        var trigB = rightPed.AddComponent<ComparisonPedestalTrigger>();
+        trigB.isLeftPedestal = false;
+
+        GameObject rightRing = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        rightRing.name = "GlowRingB";
+        rightRing.transform.SetParent(rightPed.transform, false);
+        rightRing.transform.localPosition = new Vector3(0f, 1.02f, 0f);
+        rightRing.transform.localScale = new Vector3(1.05f, 0.05f, 1.05f);
+        rightRing.GetComponent<Renderer>().sharedMaterial = glowRingMatB;
+        if (rightRing.GetComponent<Collider>() != null) UnityEngine.Object.DestroyImmediate(rightRing.GetComponent<Collider>());
+
+        GameObject labelCanvasB = CreateWorldCanvas("LabelCanvasB", rightPed.transform, new Vector3(0f, 1.45f, 0f), Quaternion.Euler(0f, 180f, 0f), new Vector2(400f, 120f), 0.001f);
+        CreateText("LabelTextB", labelCanvasB.transform, Vector2.zero, new Vector2(380f, 100f), "<b>PEDESTAL B</b>\n<size=18><color=#FF88FF>Auto-Snap / Place Organ 2</color></size>", font, 24, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+
+        // 3. WALL COMPARISON BOARD - Mounted on back wall FACING FORWARD (+Z)
+        GameObject bayRoot = GameObject.Find("VRComparisonBay");
+        if (bayRoot != null) UnityEngine.Object.DestroyImmediate(bayRoot);
+        bayRoot = new GameObject("VRComparisonBay");
+        bayRoot.transform.position = new Vector3(0f, 0.1f, -6.8f);
+        // CRITICAL: Euler(0, 180, 0) faces forward into the room so text is never backwards!
+        bayRoot.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+
         VRComparisonBay bay = bayRoot.AddComponent<VRComparisonBay>();
         bay.leftPedestalMount = leftPed.transform;
         bay.rightPedestalMount = rightPed.transform;
@@ -572,10 +615,19 @@ public class SetupVRScene
         bay.organANameText = CreateText("NameA", canvasGO.transform, new Vector2(-360f, 310f), new Vector2(500f, 40f), "Specimen A: [Empty]", font, 22, FontStyle.Bold, new Color(0.3f, 0.85f, 1f), TextAnchor.MiddleLeft);
         bay.organBNameText = CreateText("NameB", canvasGO.transform, new Vector2(360f, 310f), new Vector2(500f, 40f), "Specimen B: [Empty]", font, 22, FontStyle.Bold, new Color(1f, 0.6f, 0.9f), TextAnchor.MiddleRight);
 
-        bay.metricsComparisonText = CreateText("Metrics", canvasGO.transform, new Vector2(0f, 75f), new Vector2(1300f, 400f), "Place extracted organs onto the pedestals below to analyze comparative anatomy.", font, 20, FontStyle.Normal, Color.white, TextAnchor.UpperLeft);
+        bay.metricsComparisonText = CreateText("Metrics", canvasGO.transform, new Vector2(0f, 75f), new Vector2(1300f, 400f), "Place extracted organs onto Pedestals A & B to analyze comparative anatomy, mass ratios, and pathology.", font, 20, FontStyle.Normal, Color.white, TextAnchor.UpperLeft);
 
         bay.swapPedestalsBtn = CreateActionButton("BtnSwap", canvasGO.transform, new Vector2(-180f, -340f), new Vector2(260f, 54f), "⇄ Swap Positions", font, 20, new Color(0.25f, 0.35f, 0.6f));
         bay.clearPedestalsBtn = CreateActionButton("BtnClear", canvasGO.transform, new Vector2(180f, -340f), new Vector2(260f, 54f), "Clear & Return", font, 20, new Color(0.6f, 0.25f, 0.25f));
+
+        // Connect OrganComparisonController
+        OrganComparisonController comp = UnityEngine.Object.FindFirstObjectByType<OrganComparisonController>();
+        if (comp != null)
+        {
+            comp.leftPedestal = leftPed.transform;
+            comp.rightPedestal = rightPed.transform;
+            comp.inspectionFocalPoint = GameObject.Find("InspectionFocalPoint")?.transform;
+        }
     }
 
     private static void SetupZoneTriggersAndFloorPads()

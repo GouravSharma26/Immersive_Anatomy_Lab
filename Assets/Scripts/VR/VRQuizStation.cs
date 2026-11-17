@@ -67,6 +67,12 @@ namespace ImmersiveAnatomy.VR
             else if (Instance != this) Destroy(gameObject);
 
             if (audioSource == null) audioSource = GetComponent<AudioSource>();
+
+            // Ensure inward-facing rotation so world canvas is never seen from behind
+            if (transform.position.x < -3f)
+            {
+                transform.rotation = Quaternion.Euler(0f, 90f, 0f);
+            }
         }
 
         private void Start()

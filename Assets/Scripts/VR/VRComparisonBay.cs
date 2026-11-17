@@ -37,6 +37,12 @@ namespace ImmersiveAnatomy.VR
             else if (Instance != this) Destroy(gameObject);
 
             if (audioSource == null) audioSource = GetComponent<AudioSource>();
+
+            // Ensure forward-facing rotation so wall board is never seen from behind
+            if (transform.position.z < -3f)
+            {
+                transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            }
         }
 
         private void Start()
@@ -45,6 +51,16 @@ namespace ImmersiveAnatomy.VR
             if (swapPedestalsBtn != null) swapPedestalsBtn.onClick.AddListener(SwapPedestals);
 
             DisplayDefaultComparison();
+        }
+
+        public void SetComparisonOrgans(OrganInteractable a, VRGrabbableOrgan grabA, OrganInteractable b, VRGrabbableOrgan grabB)
+        {
+            organA = a;
+            grabbableA = grabA;
+            organB = b;
+            grabbableB = grabB;
+
+            UpdateComparisonBoard();
         }
 
         public void PlaceOrganOnPedestal(OrganInteractable organ, VRGrabbableOrgan grabbable, bool isLeft)
@@ -66,30 +82,44 @@ namespace ImmersiveAnatomy.VR
 
         public void ClearPedestals()
         {
-            if (grabbableA != null) grabbableA.SmoothReturnToSocket();
-            if (grabbableB != null) grabbableB.SmoothReturnToSocket();
+            if (OrganComparisonController.Instance != null)
+            {
+                OrganComparisonController.Instance.ReturnAllOrgansToSockets();
+            }
+            else
+            {
+                if (grabbableA != null) grabbableA.SmoothReturnToSocket();
+                if (grabbableB != null) grabbableB.SmoothReturnToSocket();
 
-            organA = null;
-            organB = null;
-            grabbableA = null;
-            grabbableB = null;
+                organA = null;
+                organB = null;
+                grabbableA = null;
+                grabbableB = null;
 
-            PlaySound(resetClip, 0.9f);
-            DisplayDefaultComparison();
+                PlaySound(resetClip, 0.9f);
+                DisplayDefaultComparison();
+            }
         }
 
         public void SwapPedestals()
         {
-            var tempOrg = organA;
-            organA = organB;
-            organB = tempOrg;
+            if (OrganComparisonController.Instance != null)
+            {
+                OrganComparisonController.Instance.SwapPedestals();
+            }
+            else
+            {
+                var tempOrg = organA;
+                organA = organB;
+                organB = tempOrg;
 
-            var tempGrab = grabbableA;
-            grabbableA = grabbableB;
-            grabbableB = tempGrab;
+                var tempGrab = grabbableA;
+                grabbableA = grabbableB;
+                grabbableB = tempGrab;
 
-            PlaySound(placeClip, 0.8f);
-            UpdateComparisonBoard();
+                PlaySound(placeClip, 0.8f);
+                UpdateComparisonBoard();
+            }
         }
 
         private void DisplayDefaultComparison()
