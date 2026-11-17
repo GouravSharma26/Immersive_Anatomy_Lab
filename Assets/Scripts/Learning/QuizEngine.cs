@@ -29,6 +29,7 @@ namespace ImmersiveAnatomy.Learning
         public QuizState State { get; private set; } = QuizState.Idle;
         public QuizQuestion CurrentQuestion { get; private set; }
         public ClinicalCase CurrentCase { get; private set; }
+        public OrganInteractable CurrentTargetOrgan { get; private set; }
         public float RemainingTime { get; private set; }
         public int CurrentQuestionIndex { get; private set; } = 0;
         public int TotalQuestionsInSession => activeSessionQuestions.Count;
@@ -76,13 +77,15 @@ namespace ImmersiveAnatomy.Learning
             questionBank.Add(new QuizQuestion
             {
                 id = "CARD-01",
-                questionText = "Click directly on the 3D organ whose anterior apex tilts toward the 5th left intercostal space.",
+                questionText = "Look at the highlighted organ in the thoracic cavity. What is the anatomical name of this organ?",
                 bodySystem = "Cardiovascular",
                 difficulty = QuizDifficulty.Beginner,
-                questionType = QuestionType.Identify3DOrgan,
+                questionType = QuestionType.MultipleChoice,
+                options = new string[] { "Heart", "Lungs & Trachea", "Liver", "Spleen" },
+                correctOptionIndex = 0,
                 targetOrganName = "Heart",
-                clinicalExplanation = "The human heart lies in the middle mediastinum, with its apex tilted anteroinferiorly toward the left 5th intercostal space midclavicular line (point of maximal impulse / PMI).",
-                hint = "Look for the muscular vascular pump situated between the lungs.",
+                clinicalExplanation = "The human heart lies in the middle mediastinum, with its apex tilted anteroinferiorly toward the left 5th intercostal space midclavicular line (PMI).",
+                hint = "It is the muscular central vascular pump situated between the lungs.",
                 points = 100
             });
 
@@ -105,13 +108,15 @@ namespace ImmersiveAnatomy.Learning
             questionBank.Add(new QuizQuestion
             {
                 id = "RESP-01",
-                questionText = "Identify the organ in the 3D model featuring cartilaginous C-rings and asymmetric right and left lung lobes.",
+                questionText = "Look at the highlighted organ featuring cartilaginous C-rings and asymmetric lobes. What is its anatomical name?",
                 bodySystem = "Respiratory",
                 difficulty = QuizDifficulty.Beginner,
-                questionType = QuestionType.Identify3DOrgan,
+                questionType = QuestionType.MultipleChoice,
+                options = new string[] { "Lungs & Trachea", "Esophagus", "Diaphragm", "Thyroid Gland" },
+                correctOptionIndex = 0,
                 targetOrganName = "Lungs",
                 clinicalExplanation = "The trachea is braced by 16-20 hyaline cartilaginous C-rings to prevent collapse during negative intrapleural pressures, bifurcating into the right (3 lobes) and left (2 lobes) lungs.",
-                hint = "Click on the bilateral spongy organs flanking the heart.",
+                hint = "The primary gas-exchange organs flanking the heart.",
                 points = 100
             });
 
@@ -134,13 +139,15 @@ namespace ImmersiveAnatomy.Learning
             questionBank.Add(new QuizQuestion
             {
                 id = "NERV-01",
-                questionText = "Click directly on the superior central nervous system structure displaying cerebral gyri, sulci, and cerebellum.",
+                questionText = "Look at the highlighted cephalic organ displaying cerebral gyri, sulci, and the cerebellum. What is its name?",
                 bodySystem = "Nervous",
                 difficulty = QuizDifficulty.Beginner,
-                questionType = QuestionType.Identify3DOrgan,
+                questionType = QuestionType.MultipleChoice,
+                options = new string[] { "Brain (Cerebrum & Cerebellum)", "Spinal Cord", "Calvaria", "Pituitary Gland" },
+                correctOptionIndex = 0,
                 targetOrganName = "Brain",
                 clinicalExplanation = "The human brain contains ~86 billion neurons, with deeply folded cerebral sulci and gyri dramatically increasing cortical surface area.",
-                hint = "Locate the cephalic cranial organ resting inside the calvaria.",
+                hint = "The primary central nervous system organ resting inside the calvaria.",
                 points = 100
             });
 
@@ -163,13 +170,15 @@ namespace ImmersiveAnatomy.Learning
             questionBank.Add(new QuizQuestion
             {
                 id = "DIG-01",
-                questionText = "Click on the largest visceral metabolic gland that receives 75% of its blood flow from the portal vein.",
+                questionText = "Look at the large highlighted visceral gland in the right upper quadrant. What is its anatomical name?",
                 bodySystem = "Digestive",
                 difficulty = QuizDifficulty.Beginner,
-                questionType = QuestionType.Identify3DOrgan,
+                questionType = QuestionType.MultipleChoice,
+                options = new string[] { "Liver", "Gallbladder", "Pancreas", "Duodenum" },
+                correctOptionIndex = 0,
                 targetOrganName = "Liver",
                 clinicalExplanation = "The liver occupies the right upper quadrant, performing gluconeogenesis, albumin synthesis, drug detoxification via Cytochrome P450, and bile production.",
-                hint = "Click the reddish-brown organ situated inferior to the right hemidiaphragm.",
+                hint = "The reddish-brown organ situated inferior to the right hemidiaphragm.",
                 points = 100
             });
 
@@ -192,13 +201,15 @@ namespace ImmersiveAnatomy.Learning
             questionBank.Add(new QuizQuestion
             {
                 id = "SKEL-01",
-                questionText = "Click directly on the osseous cage protecting thoracic viscera and supporting pulmonary expansion.",
+                questionText = "Look at the highlighted osseous cage protecting thoracic viscera. What is this anatomical system?",
                 bodySystem = "Skeletal",
                 difficulty = QuizDifficulty.Beginner,
-                questionType = QuestionType.Identify3DOrgan,
+                questionType = QuestionType.MultipleChoice,
+                options = new string[] { "Skeletal Ribcage & Spine", "Pectoral Girdle", "Appendicular Skeleton", "Muscular Wall" },
+                correctOptionIndex = 0,
                 targetOrganName = "Skeletal",
                 clinicalExplanation = "The 12 pairs of ribs articulate posteriorly with thoracic vertebrae T1-T12 and anteriorly via costal cartilage to the sternum.",
-                hint = "Select the ribcage or vertebral column structure.",
+                hint = "The ribcage and vertebral column structure.",
                 points = 100
             });
         }
@@ -285,6 +296,24 @@ namespace ImmersiveAnatomy.Learning
             LastAnswerCorrect = false;
 
             if (highlighter != null) highlighter.ClearSelection();
+
+            // Spotlight the target organ on the 3D model
+            if (!string.IsNullOrEmpty(question.targetOrganName))
+            {
+                CurrentTargetOrgan = FindOrganByName(question.targetOrganName);
+                if (CurrentTargetOrgan != null)
+                {
+                    if (BodySystemManager.Instance != null)
+                    {
+                        BodySystemManager.Instance.SetSystemVisibility("Body", true);
+                        BodySystemManager.Instance.SetSystemVisibility(CurrentTargetOrgan.bodySystem, true);
+                    }
+                    if (highlighter != null)
+                    {
+                        highlighter.SelectOrgan(CurrentTargetOrgan);
+                    }
+                }
+            }
         }
 
         public void SubmitMultipleChoiceAnswer(int optionIndex)
@@ -297,7 +326,7 @@ namespace ImmersiveAnatomy.Learning
 
         public void Submit3DOrganSelection(OrganInteractable clickedOrgan)
         {
-            if (State == QuizState.QuestionActive && CurrentQuestion != null && CurrentQuestion.questionType == QuestionType.Identify3DOrgan)
+            if (State == QuizState.QuestionActive && CurrentQuestion != null)
             {
                 if (clickedOrgan == null) return;
                 bool isCorrect = clickedOrgan.organName.IndexOf(CurrentQuestion.targetOrganName, StringComparison.OrdinalIgnoreCase) >= 0 ||
@@ -382,6 +411,30 @@ namespace ImmersiveAnatomy.Learning
             State = QuizState.Idle;
             CurrentQuestion = null;
             CurrentCase = null;
+            CurrentTargetOrgan = null;
+            if (highlighter != null) highlighter.ClearSelection();
+        }
+
+        public OrganInteractable FindOrganByName(string organOrSystem)
+        {
+            if (string.IsNullOrEmpty(organOrSystem)) return null;
+            OrganInteractable[] all = UnityEngine.Object.FindObjectsByType<OrganInteractable>(FindObjectsSortMode.None);
+            foreach (var o in all)
+            {
+                if (o.organName.IndexOf(organOrSystem, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    organOrSystem.IndexOf(o.organName, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return o;
+                }
+            }
+            foreach (var o in all)
+            {
+                if (o.bodySystem.IndexOf(organOrSystem, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return o;
+                }
+            }
+            return null;
         }
 
         // Procedural Audio Synthesizer: plays a pleasant sine chord tone without requiring external audio clips

@@ -94,23 +94,59 @@ namespace ImmersiveAnatomy.Learning
         {
             if (quizEngine == null) return;
 
+            // Header Exit Button (Always accessible)
+            if (GUI.Button(new Rect(r.x + r.width - 85, r.y, 85, 22), "<b>✕ EXIT</b>"))
+            {
+                quizEngine.ExitQuiz();
+                AnatomyInteraction ai = FindFirstObjectByType<AnatomyInteraction>();
+                if (ai != null) ai.currentArea = AnatomyInteraction.LabArea.Exploration;
+                return;
+            }
+
+            int score = analytics != null ? analytics.currentSessionScore : 0;
+            int streak = analytics != null ? analytics.currentStreak : 0;
+
+            if (quizEngine.State == QuizState.Idle)
+            {
+                // QUIZ LANDING / START SCREEN
+                GUI.Label(new Rect(r.x, r.y, r.width - 90, 22), "<size=13><b>ANATOMICAL ASSESSMENT</b></size>");
+
+                GUI.Box(new Rect(r.x, r.y + 28, r.width, 155), "");
+                string intro = "<b>Welcome to the Anatomy Quiz Station!</b>\n\n" +
+                               "• In each round, a specific organ will be <b>highlighted in 3D</b> directly on the body mannequin.\n\n" +
+                               "• Answer by selecting one of the <b>4 options</b> or by clicking the glowing organ in the 3D lab!\n\n" +
+                               "• Test your anatomical recognition, blood supply, and clinical pearls.";
+                GUI.Label(new Rect(r.x + 10, r.y + 34, r.width - 20, 145), intro);
+
+                GUI.Label(new Rect(r.x, r.y + 192, r.width, 20), $"Current Score: <b>{score} pts</b>  |  Best Streak: <b>{streak}x</b>");
+
+                if (GUI.Button(new Rect(r.x, r.y + 220, r.width, 42), "<b>▶ START 5-QUESTION QUIZ</b>"))
+                {
+                    quizEngine.StartQuizSession(5);
+                }
+
+                if (GUI.Button(new Rect(r.x, r.y + 270, r.width, 28), "Return to Anatomy Exploration"))
+                {
+                    quizEngine.ExitQuiz();
+                    AnatomyInteraction ai = FindFirstObjectByType<AnatomyInteraction>();
+                    if (ai != null) ai.currentArea = AnatomyInteraction.LabArea.Exploration;
+                }
+                return;
+            }
+
             // Session Progress Bar & Score
             int total = quizEngine.TotalQuestionsInSession;
             int current = quizEngine.CurrentQuestionIndex + 1;
             float progress = total > 0 ? ((float)current / total) * 100f : 0f;
 
-            int score = analytics != null ? analytics.currentSessionScore : 0;
-            int streak = analytics != null ? analytics.currentStreak : 0;
-
-            GUI.Label(new Rect(r.x, r.y, 250, 22), $"<b>QUESTION {current} OF {total}</b> | <b>PROGRESS:</b> {progress:F0}%");
-            GUI.Label(new Rect(r.x + r.width - 200, r.y, 200, 22), $"<b>SCORE:</b> {score}  |  <b>STREAK:</b> {streak}x");
+            GUI.Label(new Rect(r.x, r.y, r.width - 90, 20), $"<b>Q {current}/{total}</b> ({progress:F0}%) | <b>{score}pts</b> | <b>{streak}x</b>");
 
             // Timer bar
             if (quizEngine.isTimerEnabled && quizEngine.State == QuizState.QuestionActive)
             {
                 float timePct = quizEngine.RemainingTime / quizEngine.timePerQuestion;
-                GUI.Box(new Rect(r.x, r.y + 24, r.width, 6), "");
-                GUI.Box(new Rect(r.x, r.y + 24, r.width * timePct, 6), "");
+                GUI.Box(new Rect(r.x, r.y + 22, r.width, 5), "");
+                GUI.Box(new Rect(r.x, r.y + 22, r.width * timePct, 5), "");
             }
 
             if (quizEngine.State == QuizState.QuestionActive && quizEngine.CurrentQuestion != null)
@@ -118,49 +154,40 @@ namespace ImmersiveAnatomy.Learning
                 var q = quizEngine.CurrentQuestion;
 
                 // Category & Difficulty Badge
-                GUI.Label(new Rect(r.x, r.y + 36, r.width, 22), $"<color=#00E5FF><b>[{q.bodySystem.ToUpper()}]</b></color>  Difficulty: <b>{q.difficulty}</b>  |  Points: <b>+{q.points}</b>");
+                GUI.Label(new Rect(r.x, r.y + 30, r.width, 20), $"<color=#00E5FF><b>[{q.bodySystem.ToUpper()}]</b></color> {q.difficulty} | <b>+{q.points}pts</b>");
+
+                // 3D Spotlight Notice if target organ is set
+                if (quizEngine.CurrentTargetOrgan != null)
+                {
+                    GUI.Label(new Rect(r.x, r.y + 50, r.width, 18), "<color=#FFCC00><b>★ 3D Spotlight Active:</b> Check illuminated organ</color>");
+                }
 
                 // Question Prompt Card
-                GUI.Box(new Rect(r.x, r.y + 60, r.width, 70), "");
-                GUI.Label(new Rect(r.x + 10, r.y + 65, r.width - 20, 60), $"<b>{q.questionText}</b>");
+                GUI.Box(new Rect(r.x, r.y + 70, r.width, 65), "");
+                GUI.Label(new Rect(r.x + 8, r.y + 74, r.width - 16, 58), $"<b>{q.questionText}</b>");
 
-                if (q.questionType == QuestionType.Identify3DOrgan)
+                // 4 Multiple Choice Options
+                if (q.options != null && q.options.Length > 0)
                 {
-                    // 3D Organ Click Instruction
-                    GUI.Box(new Rect(r.x, r.y + 140, r.width, 100), "");
-                    GUI.Label(new Rect(r.x + 15, r.y + 155, r.width - 30, 60),
-                        "<b>ACTION REQUIRED:</b>\n" +
-                        "Aim your crosshair at the 3D anatomical model in the lab and <b>Left-Click</b> directly on the target organ to submit your answer!");
-
-                    // Hint button
-                    if (GUI.Button(new Rect(r.x, r.y + 250, 160, 28), "Request AI Hint"))
-                    {
-                        if (aiTutor != null)
-                        {
-                            quizEngine.SendMessage("LogHint", aiTutor.GetQuizHint(q), SendMessageOptions.DontRequireReceiver);
-                        }
-                    }
-                }
-                else if (q.questionType == QuestionType.MultipleChoice)
-                {
-                    // 4 Multiple Choice Options
                     for (int i = 0; i < q.options.Length; i++)
                     {
                         char optLetter = (char)('A' + i);
                         string btnText = $"<b>[{optLetter}]</b>  {q.options[i]}";
-                        if (GUI.Button(new Rect(r.x, r.y + 140 + i * 36, r.width, 30), btnText))
+                        if (GUI.Button(new Rect(r.x, r.y + 142 + i * 34, r.width, 30), btnText))
                         {
                             quizEngine.SubmitMultipleChoiceAnswer(i);
                         }
                     }
+                }
 
-                    // Hint button
-                    if (GUI.Button(new Rect(r.x, r.y + 295, 160, 26), "Request AI Hint"))
+                // Direct Click / Hint Row
+                int hintY = (int)r.y + 284;
+                GUI.Label(new Rect(r.x, hintY, r.width - 130, 26), "<i>Or click highlighted 3D organ directly!</i>");
+                if (GUI.Button(new Rect(r.x + r.width - 125, hintY, 125, 24), "Request AI Hint"))
+                {
+                    if (aiTutor != null)
                     {
-                        if (aiTutor != null)
-                        {
-                            quizEngine.SendMessage("LogHint", aiTutor.GetQuizHint(q), SendMessageOptions.DontRequireReceiver);
-                        }
+                        quizEngine.SendMessage("LogHint", aiTutor.GetQuizHint(q), SendMessageOptions.DontRequireReceiver);
                     }
                 }
             }
@@ -168,26 +195,40 @@ namespace ImmersiveAnatomy.Learning
             {
                 // Answer Review Feedback Card
                 string color = quizEngine.LastAnswerCorrect ? "#00FF88" : "#FF4444";
-                GUI.Box(new Rect(r.x, r.y + 40, r.width, 220), "");
-                GUI.Label(new Rect(r.x + 15, r.y + 50, r.width - 30, 200), $"<color={color}>{quizEngine.FeedbackMessage}</color>");
+                GUI.Box(new Rect(r.x, r.y + 35, r.width, 220), "");
+                GUI.Label(new Rect(r.x + 12, r.y + 42, r.width - 24, 205), $"<color={color}>{quizEngine.FeedbackMessage}</color>");
 
-                if (GUI.Button(new Rect(r.x, r.y + 270, r.width, 34), "<b>CONTINUE TO NEXT QUESTION -></b>"))
+                if (GUI.Button(new Rect(r.x, r.y + 265, r.width, 34), "<b>CONTINUE TO NEXT QUESTION ➔</b>"))
                 {
                     quizEngine.NextQuestion();
+                }
+
+                if (GUI.Button(new Rect(r.x, r.y + 305, r.width, 26), "Exit Quiz"))
+                {
+                    quizEngine.ExitQuiz();
+                    AnatomyInteraction ai = FindFirstObjectByType<AnatomyInteraction>();
+                    if (ai != null) ai.currentArea = AnatomyInteraction.LabArea.Exploration;
                 }
             }
             else if (quizEngine.State == QuizState.QuizComplete)
             {
                 // Summary Card
-                GUI.Box(new Rect(r.x, r.y + 40, r.width, 220), "");
-                GUI.Label(new Rect(r.x + 15, r.y + 55, r.width - 30, 40), "<size=16><b>ANATOMY QUIZ SESSION COMPLETE!</b></size>");
-                GUI.Label(new Rect(r.x + 15, r.y + 100, r.width - 30, 30), $"Final Session Score: <b>+{score} points</b>");
-                GUI.Label(new Rect(r.x + 15, r.y + 130, r.width - 30, 30), $"Highest Streak: <b>{streak} in a row</b>");
-                GUI.Label(new Rect(r.x + 15, r.y + 160, r.width - 30, 40), "Detailed system mastery and badges have been updated in your Analytics profile.");
+                GUI.Box(new Rect(r.x, r.y + 35, r.width, 220), "");
+                GUI.Label(new Rect(r.x + 12, r.y + 45, r.width - 24, 30), "<size=15><b>ANATOMY QUIZ COMPLETE!</b></size>");
+                GUI.Label(new Rect(r.x + 12, r.y + 80, r.width - 24, 25), $"Final Session Score: <b>+{score} points</b>");
+                GUI.Label(new Rect(r.x + 12, r.y + 110, r.width - 24, 25), $"Highest Streak: <b>{streak} in a row</b>");
+                GUI.Label(new Rect(r.x + 12, r.y + 140, r.width - 24, 45), "Detailed system mastery and badges have been updated in your profile.");
 
-                if (GUI.Button(new Rect(r.x, r.y + 270, r.width, 34), "<b>START NEW PRACTICE QUIZ</b>"))
+                if (GUI.Button(new Rect(r.x, r.y + 265, r.width, 34), "<b>START NEW PRACTICE QUIZ</b>"))
                 {
                     quizEngine.StartQuizSession(5);
+                }
+
+                if (GUI.Button(new Rect(r.x, r.y + 305, r.width, 26), "Exit to Lab Exploration"))
+                {
+                    quizEngine.ExitQuiz();
+                    AnatomyInteraction ai = FindFirstObjectByType<AnatomyInteraction>();
+                    if (ai != null) ai.currentArea = AnatomyInteraction.LabArea.Exploration;
                 }
             }
         }
@@ -196,7 +237,16 @@ namespace ImmersiveAnatomy.Learning
         {
             if (quizEngine == null) return;
 
-            GUI.Label(new Rect(r.x, r.y, 350, 22), "<b>PATIENT CLINICAL CASE SIMULATION</b>");
+            // Header Exit Button (Always accessible)
+            if (GUI.Button(new Rect(r.x + r.width - 85, r.y, 85, 22), "<b>✕ EXIT</b>"))
+            {
+                quizEngine.ExitQuiz();
+                AnatomyInteraction ai = FindFirstObjectByType<AnatomyInteraction>();
+                if (ai != null) ai.currentArea = AnatomyInteraction.LabArea.Exploration;
+                return;
+            }
+
+            GUI.Label(new Rect(r.x, r.y, r.width - 90, 22), "<b>PATIENT CASE SIMULATION</b>");
 
             // Case Selector buttons
             if (GUI.Button(new Rect(r.x, r.y + 26, 150, 24), "Case 1: Chest Pain")) quizEngine.StartClinicalCase(0);
@@ -235,18 +285,27 @@ namespace ImmersiveAnatomy.Learning
         {
             if (aiTutor == null) return;
 
+            // Header Exit Button (Always accessible)
+            if (GUI.Button(new Rect(r.x + r.width - 85, r.y, 85, 22), "<b>✕ EXIT</b>"))
+            {
+                AnatomyInteraction ai = FindFirstObjectByType<AnatomyInteraction>();
+                if (ai != null) ai.currentArea = AnatomyInteraction.LabArea.Exploration;
+                return;
+            }
+
             string backendStatus = (llmClient != null && llmClient.isServerOnline)
-                ? "<color=#00FF88>● Live RAG & LLM Online</color>"
-                : "<color=#FFCC00>● Standalone Clinical Corpus</color>";
+                ? "<color=#00FF88>● Live AI Online</color>"
+                : "<color=#FFCC00>● Standalone Corpus</color>";
 
-            GUI.Label(new Rect(r.x, r.y, 215, 22), $"<b>{aiTutor.tutorName}</b>");
-            GUI.Label(new Rect(r.x + 220, r.y, 155, 22), backendStatus);
+            GUI.Label(new Rect(r.x, r.y, 140, 20), $"<b>{aiTutor.tutorName}</b>");
+            GUI.Label(new Rect(r.x + 145, r.y, 105, 20), backendStatus);
 
+            // Sub-line: Pedagogical Level Toggle
             string lvlText = aiTutor.pedagogicalLevel == TutorPedagogicalLevel.SimplifiedStudent
-                ? "Level: <color=#00FF88>Student</color>"
-                : "Level: <color=#00E5FF>Clinical</color>";
+                ? "Mode: <color=#00FF88>Student (Core)</color>"
+                : "Mode: <color=#00E5FF>Clinical (Advanced)</color>";
 
-            if (GUI.Button(new Rect(r.x + r.width - 130, r.y, 130, 24), lvlText))
+            if (GUI.Button(new Rect(r.x, r.y + 24, r.width, 22), lvlText))
             {
                 aiTutor.TogglePedagogicalLevel();
             }
@@ -259,23 +318,16 @@ namespace ImmersiveAnatomy.Learning
                 ? aiChatResponseText
                 : aiTutor.GetExplanation(organName);
 
-            GUI.Box(new Rect(r.x, r.y + 28, r.width, 225), "");
-            GUI.Label(new Rect(r.x + 10, r.y + 32, r.width - 20, 215), displayText);
+            GUI.Box(new Rect(r.x, r.y + 50, r.width, 185), "");
+            GUI.Label(new Rect(r.x + 8, r.y + 54, r.width - 16, 175), displayText);
 
             // Citations and Voice row
-            int rowY = (int)r.y + 258;
-            if (aiCitations.Length > 0)
-            {
-                string citeStr = string.Join(" | ", aiCitations);
-                GUI.Label(new Rect(r.x, rowY, r.width - 120, 36), $"<size=9><b>Sources:</b> {citeStr}</size>");
-            }
-            else
-            {
-                GUI.Label(new Rect(r.x, rowY, r.width - 120, 36), "<size=9><b>Sources:</b> Gray's Anatomy 4th Ed & Guyton & Hall Medical Physiology 14th Ed</size>");
-            }
+            int rowY = (int)r.y + 240;
+            string sourceStr = aiCitations.Length > 0 ? string.Join(" | ", aiCitations) : "Gray's Anatomy & Guyton-Hall";
+            GUI.Label(new Rect(r.x, rowY, r.width - 110, 26), $"<size=9><b>Source:</b> {sourceStr}</size>");
 
             // Audio / TTS Listen Button
-            if (GUI.Button(new Rect(r.x + r.width - 110, rowY, 110, 28), "🔊 Listen [TTS]"))
+            if (GUI.Button(new Rect(r.x + r.width - 105, rowY, 105, 24), "🔊 Listen [TTS]"))
             {
                 if (llmClient != null)
                 {
@@ -283,37 +335,43 @@ namespace ImmersiveAnatomy.Learning
                 }
             }
 
-            // Quick Question Suggestions
-            int qY = rowY + 32;
-            GUI.Label(new Rect(r.x, qY, r.width, 18), "<size=10><b>Quick Clinical Inquiries:</b></size>");
-            if (GUI.Button(new Rect(r.x, qY + 18, 160, 22), "Referred Angina Pain"))
+            // Quick Question Suggestions (2x2 grid)
+            int qY = rowY + 28;
+            GUI.Label(new Rect(r.x, qY, r.width, 16), "<size=9><b>Quick Clinical Inquiries:</b></size>");
+            int halfW = ((int)r.width - 6) / 2;
+            if (GUI.Button(new Rect(r.x, qY + 18, halfW, 22), "Referred Angina"))
             {
                 customQuestionText = "Why does myocardial ischemia radiate to the left arm and jaw?";
                 SubmitChatQuestion(organName, bodySystem);
             }
-            if (GUI.Button(new Rect(r.x + 168, qY + 18, 165, 22), "Portal Vein Hemodynamics"))
+            if (GUI.Button(new Rect(r.x + halfW + 6, qY + 18, halfW, 22), "Portal Hemodynamics"))
             {
                 customQuestionText = "Explain the dual blood supply to the liver and portal hypertension.";
                 SubmitChatQuestion(organName, bodySystem);
             }
-            if (GUI.Button(new Rect(r.x + 340, qY + 18, 160, 22), "Carina & Cough Reflex"))
+            if (GUI.Button(new Rect(r.x, qY + 44, halfW, 22), "Carina & Cough Reflex"))
             {
                 customQuestionText = "What is the clinical significance of the tracheal carina?";
                 SubmitChatQuestion(organName, bodySystem);
             }
+            if (GUI.Button(new Rect(r.x + halfW + 6, qY + 44, halfW, 22), "Baroreceptor Reflex"))
+            {
+                customQuestionText = "How do aortic arch baroreceptors regulate arterial blood pressure?";
+                SubmitChatQuestion(organName, bodySystem);
+            }
 
             // Custom Question Input Field & Submit
-            int inputY = qY + 44;
-            customQuestionText = GUI.TextField(new Rect(r.x, inputY, r.width - 100, 24), customQuestionText);
+            int inputY = qY + 72;
+            customQuestionText = GUI.TextField(new Rect(r.x, inputY, r.width - 85, 24), customQuestionText);
             
-            string sendBtnLabel = (llmClient != null && llmClient.isLoading) ? "Thinking..." : "Ask AI";
-            if (GUI.Button(new Rect(r.x + r.width - 95, inputY, 95, 24), sendBtnLabel))
+            string sendBtnLabel = (llmClient != null && llmClient.isLoading) ? "..." : "Ask AI";
+            if (GUI.Button(new Rect(r.x + r.width - 80, inputY, 80, 24), sendBtnLabel))
             {
                 SubmitChatQuestion(organName, bodySystem);
             }
 
             // Disclaimer Footer
-            GUI.Label(new Rect(r.x, inputY + 28, r.width, 24), "<size=8><color=#888888>DISCLAIMER: Educational medical simulation only. Not intended for clinical diagnosis or medical management.</color></size>");
+            GUI.Label(new Rect(r.x, inputY + 26, r.width, 22), "<size=8><color=#888888>DISCLAIMER: Educational medical simulation only.</color></size>");
         }
 
         private void SubmitChatQuestion(string organName, string bodySystem)

@@ -166,7 +166,10 @@ public class SetupVRScene
         // 10. Setup Rear Station: Organ Comparison & Pathology Bay
         SetupComparisonBayStation();
 
-        // 11. Ensure Backend Clients and Managers
+        // 11. Setup Physical Dedicated Zones & Spatial Floor Triggers
+        SetupZoneTriggersAndFloorPads();
+
+        // 12. Ensure Backend Clients and Managers
         SetupManagers();
 
         EditorSceneManager.MarkSceneDirty(scene);
@@ -272,6 +275,19 @@ public class SetupVRScene
         // Position player in center observation spot
         rigInstance.transform.position = new Vector3(0f, 0f, -0.2f);
         rigInstance.transform.rotation = Quaternion.identity;
+
+        // Ensure character collider / kinematic body so trigger detection works
+        Rigidbody rigRb = rigInstance.GetComponent<Rigidbody>();
+        if (rigRb == null) rigRb = rigInstance.AddComponent<Rigidbody>();
+        rigRb.isKinematic = true;
+        rigRb.useGravity = false;
+
+        CapsuleCollider rigCol = rigInstance.GetComponent<CapsuleCollider>();
+        if (rigCol == null) rigCol = rigInstance.AddComponent<CapsuleCollider>();
+        rigCol.height = 1.8f;
+        rigCol.radius = 0.35f;
+        rigCol.center = new Vector3(0f, 0.9f, 0f);
+        rigCol.isTrigger = false;
 
         return rigInstance;
     }
@@ -639,6 +655,62 @@ public class SetupVRScene
 
         bay.swapPedestalsBtn = CreateActionButton("BtnSwap", canvasGO.transform, new Vector2(-180f, -340f), new Vector2(260f, 54f), "⇄ Swap Positions", font, 20, new Color(0.25f, 0.35f, 0.6f));
         bay.clearPedestalsBtn = CreateActionButton("BtnClear", canvasGO.transform, new Vector2(180f, -340f), new Vector2(260f, 54f), "Clear & Return", font, 20, new Color(0.6f, 0.25f, 0.25f));
+    }
+
+    private static void SetupZoneTriggersAndFloorPads()
+    {
+        // 1. Quiz Zone Trigger and Floor Pad (X = -2.6, Z = 1.2)
+        EnsureZonePadAndTrigger("Zone_Quiz", new Vector3(-2.6f, 0f, 1.2f), new Vector3(2.6f, 2.2f, 2.6f),
+            VRZoneTrigger.LabZoneType.Quiz, "Quiz & Examination Bay", new Color(0.1f, 0.6f, 0.9f, 0.8f));
+
+        // 2. Teaching AI Pod Zone Trigger and Floor Pad (X = +2.6, Z = 1.2)
+        EnsureZonePadAndTrigger("Zone_TeachingAI", new Vector3(2.6f, 0f, 1.2f), new Vector3(2.6f, 2.2f, 2.6f),
+            VRZoneTrigger.LabZoneType.TeachingAI, "Dr. Nova AI Teaching Pod", new Color(0.1f, 0.85f, 0.5f, 0.8f));
+
+        // 3. Central Dissection Zone Trigger and Floor Pad (X = 0, Z = 1.2)
+        EnsureZonePadAndTrigger("Zone_Dissection", new Vector3(0f, 0f, 1.2f), new Vector3(2.8f, 2.2f, 2.6f),
+            VRZoneTrigger.LabZoneType.Dissection, "Anatomy Dissection Stage", new Color(0.2f, 0.5f, 0.85f, 0.8f));
+
+        // 4. Comparison Bay Zone Trigger and Floor Pad (X = 0, Z = -1.8)
+        EnsureZonePadAndTrigger("Zone_Comparison", new Vector3(0f, 0f, -1.8f), new Vector3(2.8f, 2.2f, 2.6f),
+            VRZoneTrigger.LabZoneType.Comparison, "Organ Comparison Bay", new Color(0.7f, 0.3f, 0.85f, 0.8f));
+    }
+
+    private static void EnsureZonePadAndTrigger(string name, Vector3 pos, Vector3 size, VRZoneTrigger.LabZoneType zoneType, string label, Color color)
+    {
+        GameObject zoneGO = GameObject.Find(name);
+        if (zoneGO != null) UnityEngine.Object.DestroyImmediate(zoneGO);
+        zoneGO = new GameObject(name);
+        zoneGO.transform.position = pos;
+
+        // Visual floor decal cylinder
+        GameObject decal = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        decal.name = "FloorDecal";
+        decal.transform.SetParent(zoneGO.transform, false);
+        decal.transform.localPosition = new Vector3(0f, 0.015f, 0f);
+        decal.transform.localScale = new Vector3(size.x, 0.015f, size.z);
+        
+        Collider colDecal = decal.GetComponent<Collider>();
+        if (colDecal != null) UnityEngine.Object.DestroyImmediate(colDecal);
+
+        Material decalMat = SetupLabScene.CreateMaterial("Lab", "Mat_" + name, color * 0.4f, 0.8f, 0.3f, true, color * 0.6f);
+        decal.GetComponent<Renderer>().sharedMaterial = decalMat;
+
+        // World-Space Zone Signboard
+        GameObject signCanvas = CreateWorldCanvas("ZoneBanner", zoneGO.transform, new Vector3(0f, 2.3f, 0f), Quaternion.identity, new Vector2(600f, 100f), 0.0018f);
+        CreateImage("BannerBG", signCanvas.transform, Vector2.zero, new Vector2(600f, 90f), new Color(0.04f, 0.08f, 0.14f, 0.85f));
+        CreateText("BannerText", signCanvas.transform, Vector2.zero, new Vector2(580f, 80f), label.ToUpper(), GetLabFont(), 26, FontStyle.Bold, color, TextAnchor.MiddleCenter);
+
+        // Trigger Collider
+        BoxCollider boxCol = zoneGO.AddComponent<BoxCollider>();
+        boxCol.isTrigger = true;
+        boxCol.center = new Vector3(0f, size.y * 0.5f, 0f);
+        boxCol.size = size;
+
+        VRZoneTrigger trigger = zoneGO.AddComponent<VRZoneTrigger>();
+        trigger.zoneType = zoneType;
+        trigger.zoneDisplayName = label;
+        trigger.zoneAccentColor = color;
     }
 
     private static void SetupManagers()
