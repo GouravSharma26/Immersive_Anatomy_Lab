@@ -61,7 +61,13 @@ namespace ImmersiveAnatomy.VR
         [Header("Lab Control Fields")]
         public Button explodeButton;
         public Button xrayButton;
+        public Button vascularButton;
+        public Button thoracicButton;
+        public Button normalModeButton;
         public Button resetAllButton;
+        public Text xrayButtonText;
+        public Text vascularButtonText;
+        public Text thoracicButtonText;
         public Button[] systemToggleButtons;
         public Text[] systemToggleTexts;
 
@@ -83,6 +89,22 @@ namespace ImmersiveAnatomy.VR
             InitButtonListeners();
             SetTab(TabletTab.OrganMetrics);
             UpdateMetricsUI();
+
+            XRayViewController xray = FindFirstObjectByType<XRayViewController>();
+            if (xray != null)
+            {
+                xray.OnModeChanged += SyncModeStates;
+                SyncModeStates(xray.CurrentMode);
+            }
+        }
+
+        private void OnDestroy()
+        {
+            XRayViewController xray = FindFirstObjectByType<XRayViewController>();
+            if (xray != null)
+            {
+                xray.OnModeChanged -= SyncModeStates;
+            }
         }
 
         private void InitButtonListeners()
@@ -132,6 +154,21 @@ namespace ImmersiveAnatomy.VR
             if (xrayButton != null)
             {
                 xrayButton.onClick.AddListener(ToggleXRayView);
+            }
+
+            if (vascularButton != null)
+            {
+                vascularButton.onClick.AddListener(ToggleVascularView);
+            }
+
+            if (thoracicButton != null)
+            {
+                thoracicButton.onClick.AddListener(ToggleThoracicView);
+            }
+
+            if (normalModeButton != null)
+            {
+                normalModeButton.onClick.AddListener(SetNormalView);
             }
         }
 
@@ -269,7 +306,11 @@ namespace ImmersiveAnatomy.VR
             if (exploded != null && exploded.IsExploded) exploded.ToggleExplodedView();
 
             XRayViewController xray = FindFirstObjectByType<XRayViewController>();
-            if (xray != null && xray.IsXRayActive) xray.ToggleXRay();
+            if (xray != null)
+            {
+                xray.ResetToNormal();
+                SyncModeStates(XRayViewController.MedicalVisualizationMode.Normal);
+            }
 
             PlaySound(actionSound);
         }
@@ -290,7 +331,57 @@ namespace ImmersiveAnatomy.VR
             if (xray != null)
             {
                 xray.ToggleXRay();
+                SyncModeStates(xray.CurrentMode);
                 PlaySound(actionSound);
+            }
+        }
+
+        public void ToggleVascularView()
+        {
+            XRayViewController xray = FindFirstObjectByType<XRayViewController>();
+            if (xray != null)
+            {
+                xray.ToggleVascularMode();
+                SyncModeStates(xray.CurrentMode);
+                PlaySound(actionSound);
+            }
+        }
+
+        public void ToggleThoracicView()
+        {
+            XRayViewController xray = FindFirstObjectByType<XRayViewController>();
+            if (xray != null)
+            {
+                xray.ToggleThoracicMode();
+                SyncModeStates(xray.CurrentMode);
+                PlaySound(actionSound);
+            }
+        }
+
+        public void SetNormalView()
+        {
+            XRayViewController xray = FindFirstObjectByType<XRayViewController>();
+            if (xray != null)
+            {
+                xray.ResetToNormal();
+                SyncModeStates(XRayViewController.MedicalVisualizationMode.Normal);
+                PlaySound(actionSound);
+            }
+        }
+
+        public void SyncModeStates(XRayViewController.MedicalVisualizationMode mode)
+        {
+            if (xrayButtonText != null)
+            {
+                xrayButtonText.text = (mode == XRayViewController.MedicalVisualizationMode.XRay) ? "Normal View" : "X-Ray Mode";
+            }
+            if (vascularButtonText != null)
+            {
+                vascularButtonText.text = (mode == XRayViewController.MedicalVisualizationMode.Vascular) ? "Exit Vascular" : "Vascular Angiogram";
+            }
+            if (thoracicButtonText != null)
+            {
+                thoracicButtonText.text = (mode == XRayViewController.MedicalVisualizationMode.ThoracicTranslucent) ? "Exit Thoracic" : "Thoracic Silhouette";
             }
         }
 
