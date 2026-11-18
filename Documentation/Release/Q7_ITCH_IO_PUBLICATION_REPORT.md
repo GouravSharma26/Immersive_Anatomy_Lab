@@ -2,9 +2,10 @@
 
 **Project:** Immersive Anatomy Lab  
 **Engine:** Unity 6.3 LTS (`6000.3.21f1`), Universal Render Pipeline 17.3.0  
-**Phase:** Q7 (itch.io Publication Preparation & Dual-Platform Packaging)  
+**Phase:** Q7 (itch.io Publication & Dual-Platform Packaging)  
 **Date:** November 18, 2026  
-**Status:** **PUBLICATION ASSETS & DOCUMENTATION PREPARED (PENDING OWNER MANUAL UPLOAD)**
+**Status:** **PUBLISHED & VERIFIED LIVE (HTTP 200)**  
+**Public Release URL:** [https://gourav259.itch.io/immersive-anatomy-lab](https://gourav259.itch.io/immersive-anatomy-lab)
 
 ---
 
