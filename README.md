@@ -71,17 +71,6 @@
    `adb install -r ImmersiveAnatomyLab-Quest-v1.0.0.apk`
 4. Put on your headset and launch **Immersive Anatomy Lab** from **App Library > Unknown Sources**.
 
----
-
-## ⚠️ Important Testing & Transparency Disclosures
-
-* **Meta Quest Hardware Verification Status:**
-  The Meta Quest APK is a compiled and cryptographically signed ARM64 release candidate (`com.gourav.immersiveanatomylab`). Because verification was performed without physical Quest hardware connected, in-headset frame rate (72 Hz / 90 Hz), thermal performance, and battery telemetry are marked **`NOT TESTED`**.
-* **Network & Privacy:**
-  Cloud AI features require an active internet connection. No personal user data or personal health identifiers are recorded or stored.
-
----
-
 ## 📜 Credits & Technology Stack
 * **Engine:** Unity 6.3 LTS (Universal Render Pipeline)
 * **VR Framework:** Unity OpenXR & XR Interaction Toolkit
